@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/shawndesu/chaldea.git",
+  "branch": "main",
+  "preserve": ["setup"],
+  "backup": "core/backups"
+}
