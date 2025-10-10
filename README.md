@@ -48,7 +48,7 @@
 ### Running the Bot
 
 1. Fork or clone the repository:
-   [Chaldea Telegram Bot Repo](https://github.com/Kaizenji/Ownersv2-TelegramBot)
+   [Chaldea Telegram Bot Repo](https://github.com/ajirodesu/ChaldeaES)
 
 2. Install dependencies:
 
@@ -83,7 +83,7 @@ Deploy the bot on any of the following platforms:
 Commands follow a consistent modular format:
 
 ```javascript
-const meta = {
+export const meta = {
   name: "commandname",
   version: "1.0.0",
   aliases: [],
@@ -96,11 +96,10 @@ const meta = {
   guide: "Usage guide"
 };
 
-async function onStart({ bot, args, message, msg, usages }) {
+export async function onStart({ bot, args, response, msg, usages }) {
   // Command logic
 }
 
-module.exports = { meta, onStart };
 ```
 
 ---
@@ -111,7 +110,7 @@ module.exports = { meta, onStart };
 
 ```javascript
 // Reply
-message.reply("Hello!");
+response.reply("Hello!");
 
 // Send
 bot.sendMessage(msg.chat.id, "Hello!");
@@ -121,7 +120,7 @@ bot.sendMessage(msg.chat.id, "Hello!");
 
 ```javascript
 // Reply with image
-message.photo("https://example.com/image.jpg", { caption: "Here’s an image!" });
+response.photo("https://example.com/image.jpg", { caption: "Here’s an image!" });
 
 // Send image from URL
 bot.sendPhoto(msg.chat.id, "https://example.com/image.jpg", {
@@ -138,7 +137,7 @@ bot.sendPhoto(msg.chat.id, "./path/to/image.jpg", {
 
 ```javascript
 // Reply with video
-message.video("https://example.com/video.mp4", { caption: "Check this out!" });
+response.video("https://example.com/video.mp4", { caption: "Check this out!" });
 
 // Send video
 bot.sendVideo(msg.chat.id, "https://example.com/video.mp4", {
@@ -150,7 +149,7 @@ bot.sendVideo(msg.chat.id, "https://example.com/video.mp4", {
 
 ```javascript
 // Reply or send audio
-message.audio("https://example.com/audio.mp3", { caption: "Now playing" });
+response.audio("https://example.com/audio.mp3", { caption: "Now playing" });
 bot.sendAudio(msg.chat.id, "./path/to/audio.mp3", { caption: "Now playing" });
 ```
 
@@ -161,7 +160,7 @@ bot.sendAudio(msg.chat.id, "./path/to/audio.mp3", { caption: "Now playing" });
 bot.deleteMessage(msg.chat.id, msg.message_id);
 
 // Delete after delay
-const reply = await message.reply("Temporary message");
+const reply = await response.reply("Temporary message");
 setTimeout(() => {
   bot.deleteMessage(msg.chat.id, reply.message_id);
 }, 5000);
