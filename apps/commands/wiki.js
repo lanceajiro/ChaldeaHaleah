@@ -1,7 +1,7 @@
 export const meta = {
   name: "wiki",
   version: "1.0.0",
-  aliases: ["wikipedia", "wp"],
+  aliases: ["wikipedia"],
   description: "Search Wikipedia and return page summary / links",
   author: "assistant",
   prefix: "both",       // true = only with prefix, false = no prefix, "both" = both allowed
