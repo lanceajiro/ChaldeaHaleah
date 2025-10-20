@@ -13,17 +13,20 @@ export const meta = {
   guide: ['']
 };
 
-export async function onStart({ bot, msg, args, response, usages }) {
-  // show loading message
+// Function to fetch advice
+async function fetchAdvice() {
+  const res = await axios.get('https://api.adviceslip.com/advice', {
+    headers: { Accept: 'application/json' }
+  });
+  return res.data?.slip?.advice || null;
+}
+
+export async function onStart({ bot, msg, chatId, response }) {
   const loadingMsg = await response.reply('💬 *Fetching a piece of advice...*', { parse_mode: 'Markdown' });
 
   try {
-    const res = await axios.get('https://api.adviceslip.com/advice', {
-      headers: { Accept: 'application/json' }
-    });
-
-    const slip = res.data?.slip;
-    if (!slip || !slip.advice) {
+    const advice = await fetchAdvice();
+    if (!advice) {
       await bot.editMessageText('⚠️ Could not retrieve advice from the API.', {
         chat_id: msg.chat.id,
         message_id: loadingMsg.message_id,
@@ -32,23 +35,94 @@ export async function onStart({ bot, msg, args, response, usages }) {
       return;
     }
 
-    const advice = slip.advice;
+    // Inline keyboard with refresh button
+    const inlineKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'advice',
+            messageId: null,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
 
-    // edit the loading message to show the advice
+    // Edit message to show advice and attach button
     await bot.editMessageText(`💡 *Random Advice:*\n\n_${advice}_`, {
       chat_id: msg.chat.id,
       message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: inlineKeyboard }
     });
 
-    // also send as a new message (follows the pattern of cat.js which edits then sends content)
-    await bot.sendMessage(msg.chat.id, `💬 _${advice}_`, { parse_mode: 'Markdown' });
+    // Update callback data with the actual message id
+    const updatedKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'advice',
+            messageId: loadingMsg.message_id,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
 
+    await bot.editMessageReplyMarkup(
+      { inline_keyboard: updatedKeyboard },
+      { chat_id: msg.chat.id, message_id: loadingMsg.message_id }
+    );
   } catch (error) {
     await bot.editMessageText(`⚠️ Failed to fetch advice: ${error.message}`, {
       chat_id: msg.chat.id,
       message_id: loadingMsg.message_id,
       parse_mode: 'Markdown'
     });
+  }
+}
+
+// Callback handler for refresh button
+export async function onCallback({ bot, callbackQuery, payload }) {
+  try {
+    if (payload.command !== 'advice') return;
+    if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
+
+    const advice = await fetchAdvice();
+    if (!advice) {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: 'Error fetching advice.' });
+      return;
+    }
+
+    const updatedKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'advice',
+            messageId: payload.messageId,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
+
+    await bot.editMessageText(`💡 *Random Advice:*\n\n_${advice}_`, {
+      chat_id: callbackQuery.message.chat.id,
+      message_id: payload.messageId,
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: updatedKeyboard }
+    });
+
+    await bot.answerCallbackQuery(callbackQuery.id);
+  } catch (err) {
+    console.error('Error in advice callback:', err);
+    try {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: 'An error occurred. Please try again.' });
+    } catch (innerErr) {
+      console.error('Failed to answer callback query:', innerErr.message);
+    }
   }
 }

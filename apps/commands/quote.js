@@ -13,16 +13,21 @@ export const meta = {
   guide: ['']
 };
 
-export async function onStart({ bot, msg, args, response, usages }) {
+// Function to fetch a random quote
+async function fetchQuote() {
+  const res = await axios.get('https://dummyjson.com/quotes/random', {
+    headers: { Accept: 'application/json' }
+  });
+  return res.data || null;
+}
+
+export async function onStart({ bot, msg, chatId, response }) {
   const loadingMsg = await response.reply('💭 *Fetching an inspirational quote...*', { parse_mode: 'Markdown' });
 
   try {
-    const res = await axios.get('https://dummyjson.com/quotes/random', {
-      headers: { Accept: 'application/json' }
-    });
-
-    const quote = res.data?.quote;
-    const author = res.data?.author;
+    const data = await fetchQuote();
+    const quote = data?.quote;
+    const author = data?.author;
 
     if (!quote || !author) {
       await bot.editMessageText('⚠️ Could not retrieve a quote from the API.', {
@@ -35,15 +40,46 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     const text = `📜 *Quote of the Moment:*\n\n_"${quote}"_\n\n— *${author}*`;
 
-    // Edit loading message to display the quote
+    // Inline keyboard with refresh button
+    const inlineKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'quote',
+            messageId: null,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
+
+    // Edit message to show quote and add refresh button
     await bot.editMessageText(text, {
       chat_id: msg.chat.id,
       message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: inlineKeyboard }
     });
 
-    // Also send as a new message for consistency
-    await bot.sendMessage(msg.chat.id, text, { parse_mode: 'Markdown' });
+    // Update keyboard with actual message ID
+    const updatedKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'quote',
+            messageId: loadingMsg.message_id,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
+
+    await bot.editMessageReplyMarkup(
+      { inline_keyboard: updatedKeyboard },
+      { chat_id: msg.chat.id, message_id: loadingMsg.message_id }
+    );
 
   } catch (error) {
     const fallbackQuote = "Life is what happens when you're busy making other plans.";
@@ -57,5 +93,53 @@ export async function onStart({ bot, msg, args, response, usages }) {
         parse_mode: 'Markdown'
       }
     );
+  }
+}
+
+// Callback handler for refresh button
+export async function onCallback({ bot, callbackQuery, payload }) {
+  try {
+    if (payload.command !== 'quote') return;
+    if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
+
+    const data = await fetchQuote();
+    const quote = data?.quote;
+    const author = data?.author;
+
+    if (!quote || !author) {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: 'Error fetching quote.' });
+      return;
+    }
+
+    const text = `📜 *Quote of the Moment:*\n\n_"${quote}"_\n\n— *${author}*`;
+
+    const updatedKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'quote',
+            messageId: payload.messageId,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
+
+    await bot.editMessageText(text, {
+      chat_id: callbackQuery.message.chat.id,
+      message_id: payload.messageId,
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: updatedKeyboard }
+    });
+
+    await bot.answerCallbackQuery(callbackQuery.id);
+  } catch (err) {
+    console.error('Error in quote callback:', err);
+    try {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: 'An error occurred. Please try again.' });
+    } catch (innerErr) {
+      console.error('Failed to answer callback query:', innerErr.message);
+    }
   }
 }

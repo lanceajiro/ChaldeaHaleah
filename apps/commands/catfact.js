@@ -39,9 +39,6 @@ export async function onStart({ bot, msg, args, response, usages }) {
       parse_mode: 'Markdown'
     });
 
-    // also send as a regular message (keeps behaviour consistent with remembered commands)
-    await bot.sendMessage(msg.chat.id, `😺 _${fact}_`, { parse_mode: 'Markdown' });
-
   } catch (error) {
     await bot.editMessageText(`⚠️ Failed to fetch cat fact: ${error.message}`, {
       chat_id: msg.chat.id,

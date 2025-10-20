@@ -18,7 +18,7 @@ export async function onStart({ bot, msg, response }) {
 
   try {
     // Get the image as a stream (binary)
-    const res = await axios.get(`${global.api.nekolabs}/random/cat`, {
+    const res = await axios.get(`${global.api.nekolabs}/random/blue-archive`, {
       responseType: 'arraybuffer'
     });
 

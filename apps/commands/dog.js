@@ -13,15 +13,19 @@ export const meta = {
   guide: ['']
 };
 
-export async function onStart({ bot, msg, args, response, usages }) {
+// Function to fetch a dog image
+async function fetchDog() {
+  const res = await axios.get('https://dog.ceo/api/breeds/image/random', {
+    headers: { Accept: 'application/json' }
+  });
+  return res.data?.message || null;
+}
+
+export async function onStart({ bot, msg, chatId, response }) {
   const loadingMsg = await response.reply('🐶 *Fetching a random dog image...*', { parse_mode: 'Markdown' });
 
   try {
-    const res = await axios.get('https://dog.ceo/api/breeds/image/random', {
-      headers: { Accept: 'application/json' }
-    });
-
-    const imageUrl = res.data?.message;
+    const imageUrl = await fetchDog();
     if (!imageUrl) {
       await bot.editMessageText('⚠️ Could not retrieve a dog image from the API.', {
         chat_id: msg.chat.id,
@@ -31,24 +35,103 @@ export async function onStart({ bot, msg, args, response, usages }) {
       return;
     }
 
-    // Edit loading message to success
-    await bot.editMessageText('✨ *Here’s your random dog image!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    // Inline keyboard with refresh button
+    const inlineKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'dog',
+            messageId: null,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
 
-    // Send the dog photo (Telegram accepts a direct URL)
-    await bot.sendPhoto(msg.chat.id, imageUrl, {
+    // Send the dog photo
+    const sentMessage = await bot.sendPhoto(msg.chat.id, imageUrl, {
       caption: '🐕 *Random Dog Image*',
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: inlineKeyboard }
     });
 
+    // Update inline keyboard with the actual message id
+    const updatedKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'dog',
+            messageId: sentMessage.message_id,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
+
+    await bot.editMessageReplyMarkup(
+      { inline_keyboard: updatedKeyboard },
+      { chat_id: msg.chat.id, message_id: sentMessage.message_id }
+    );
+
+    // Delete the loading message
+    await bot.deleteMessage(msg.chat.id, loadingMsg.message_id);
   } catch (error) {
     await bot.editMessageText(`⚠️ Failed to fetch dog image: ${error.message}`, {
       chat_id: msg.chat.id,
       message_id: loadingMsg.message_id,
       parse_mode: 'Markdown'
     });
+  }
+}
+
+// Callback handler for refresh button
+export async function onCallback({ bot, callbackQuery, payload }) {
+  try {
+    if (payload.command !== 'dog') return;
+    if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
+
+    const imageUrl = await fetchDog();
+    if (!imageUrl) {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: 'Error fetching dog image.' });
+      return;
+    }
+
+    const updatedKeyboard = [
+      [
+        {
+          text: '🔁',
+          callback_data: JSON.stringify({
+            command: 'dog',
+            messageId: payload.messageId,
+            args: ['refresh']
+          })
+        }
+      ]
+    ];
+
+    await bot.editMessageMedia(
+      {
+        type: 'photo',
+        media: imageUrl,
+        caption: '🐕 *Random Dog Image*',
+        parse_mode: 'Markdown'
+      },
+      {
+        chat_id: callbackQuery.message.chat.id,
+        message_id: payload.messageId,
+        reply_markup: { inline_keyboard: updatedKeyboard }
+      }
+    );
+
+    await bot.answerCallbackQuery(callbackQuery.id);
+  } catch (err) {
+    console.error('Error in dog callback:', err);
+    try {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: 'An error occurred. Please try again.' });
+    } catch (innerErr) {
+      console.error('Failed to answer callback query:', innerErr.message);
+    }
   }
 }
