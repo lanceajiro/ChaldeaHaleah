@@ -1,42 +1,41 @@
 import axios from 'axios';
 
 export const meta = {
-  name: 'cat',
+  name: 'anime',
   version: '1.0.0',
-  aliases: ['catphoto'],
-  description: 'Send a random girl photo',
+  aliases: ['animephoto', 'animet'],
+  description: 'Send a random anime photo',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'fun',
+  category: 'anime',
   type: 'anyone',
   cooldown: 5,
   guide: ['']
 };
 
 export async function onStart({ bot, msg, response }) {
-  const loadingMsg = await response.reply(`🎭 *Fetching a random ${meta.name} photo...*`, { parse_mode: 'Markdown' });
+  const loadingMsg = await response.reply(`🎭 *Fetching a random ${meta.name} image...*`, { parse_mode: 'Markdown' });
 
   try {
-    // Get the image as a stream (binary)
-    const res = await axios.get(`${global.api.nekolabs}/random/cat`, {
+    const res = await axios.get('http://pic.re/image', {
       responseType: 'arraybuffer'
     });
 
     // Edit the loading message to show success
-    await bot.editMessageText(`✨ *Here’s your random ${meta.name} photo!*`, {
+    await bot.editMessageText(`✨ *Here’s your random ${meta.name} image!*`, {
       chat_id: msg.chat.id,
       message_id: loadingMsg.message_id,
       parse_mode: 'Markdown'
     });
 
-    // Send the cosplay photo
+    // Send the image as a photo
     await bot.sendPhoto(msg.chat.id, Buffer.from(res.data), {
-      caption: `📸 *Random ${meta.name} Photo*`,
+      caption: `📸 *Random ${meta.name} Image*`,
       parse_mode: 'Markdown'
     });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch ${meta.name} photo: ${error.message}`, {
+    await bot.editMessageText(`⚠️ Failed to fetch ${meta.name} image: ${error.message}`, {
       chat_id: msg.chat.id,
       message_id: loadingMsg.message_id,
       parse_mode: 'Markdown'
