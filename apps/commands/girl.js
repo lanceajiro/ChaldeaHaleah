@@ -7,7 +7,7 @@ export const meta = {
   description: 'Send a random girl photo',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'fun',
+  category: 'random',
   type: 'anyone',
   cooldown: 5,
   guide: ['']

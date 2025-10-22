@@ -7,7 +7,7 @@ export const meta = {
   description: 'Check temporary email inbox using token authentication',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'utility',
+  category: 'tools',
   type: 'anyone',
   cooldown: 5,
   guide: ['<token> - Fetch inbox messages using your temp mail token']

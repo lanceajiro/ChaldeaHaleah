@@ -7,7 +7,7 @@ export const meta = {
   description: 'Fetch song lyrics using the Popcat lyrics API',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'music',
+  category: 'media',
   type: 'anyone',
   cooldown: 5,
   guide: ['<song name> - Get the lyrics for the given song (e.g. /lyrics never gonna give you up)']

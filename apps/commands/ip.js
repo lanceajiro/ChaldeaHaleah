@@ -7,7 +7,7 @@ export const meta = {
   description: 'Get IP information',
   author: 'Prince',
   prefix: 'both',
-  category: 'utility',
+  category: 'tools',
   type: 'anyone',
   cooldown: 5,
   guide: ['get <ip address>']

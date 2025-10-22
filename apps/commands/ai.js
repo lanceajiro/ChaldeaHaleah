@@ -7,7 +7,7 @@ export const meta = {
   description: 'Chat with AI powered by Nekolabs GPT-5',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'ai',
+  category: 'AI',
   type: 'anyone',
   cooldown: 3,
   guide: ['<message or reply to image>']

@@ -7,7 +7,7 @@ export const meta = {
   description: 'Send a random wallpaper. Optionally provide a query and/or size (e.g. "space 2560x1440").',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'fun',
+  category: 'utility',
   type: 'anyone',
   cooldown: 3,
   guide: ['[query] [widthxheight] — examples: "space", "mountains 1920x1080"']

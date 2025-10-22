@@ -7,7 +7,7 @@ export const meta = {
   description: 'Download Spotify songs by title',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'music',
+  category: 'media',
   type: 'anyone',
   cooldown: 5,
   guide: ['<song name>']

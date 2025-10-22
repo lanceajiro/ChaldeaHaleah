@@ -7,7 +7,7 @@ export const meta = {
   description: 'Chat with Venice Uncensored 1.1 AI assistant',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'ai',
+  category: 'AI',
   type: 'anyone',
   cooldown: 3,
   guide: ['<question>']

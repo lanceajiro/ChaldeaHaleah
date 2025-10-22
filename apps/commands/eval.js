@@ -5,7 +5,7 @@ export const meta = {
   description: "Test your code from the bot quickly",
   author: "dipto",
   prefix: "both",       // true = only with prefix, false = no prefix, "both" = both allowed
-  category: "owner",
+  category: "admin",
   type: "admin",        // anyone, admin, vip, group, private
   cooldown: 5,
   guide: "<code to test>"

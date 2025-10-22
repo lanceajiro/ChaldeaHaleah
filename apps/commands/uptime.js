@@ -8,7 +8,7 @@ export const meta = {
   guide: [""],
   cooldown: 5,
   type: "anyone",
-  category: "info"
+  category: "system"
 };
 
 export async function onStart({ bot, response, chatId, msg, args }) {

@@ -7,7 +7,7 @@ export const meta = {
   description: 'Send a random artwork (public domain) from the Art Institute of Chicago',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'fun',
+  category: 'random',
   type: 'anyone',
   cooldown: 3,
   guide: []

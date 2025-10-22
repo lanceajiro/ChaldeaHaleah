@@ -7,7 +7,7 @@ export const meta = {
   description: 'Generate a temporary email address using TempMail API',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'utility',
+  category: 'tools',
   type: 'anyone',
   cooldown: 5,
   guide: ['']

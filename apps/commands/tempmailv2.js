@@ -7,7 +7,7 @@ export const meta = {
   description: 'Generate a temporary email account with Mail.tm API',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'utility',
+  category: 'tools',
   type: 'anyone',
   cooldown: 8,
   guide: ['']

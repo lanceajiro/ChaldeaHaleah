@@ -7,7 +7,7 @@ export const meta = {
   description: 'Check inbox messages for a temporary email address',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'utility',
+  category: 'tools',
   type: 'anyone',
   cooldown: 5,
   guide: ['<email> - Check messages for the specified temp mail']

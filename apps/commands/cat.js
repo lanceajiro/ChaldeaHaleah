@@ -4,10 +4,10 @@ export const meta = {
   name: 'cat',
   version: '1.0.0',
   aliases: ['catphoto'],
-  description: 'Send a random girl photo',
+  description: 'Send a random cat photo',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'fun',
+  category: 'random',
   type: 'anyone',
   cooldown: 5,
   guide: ['']

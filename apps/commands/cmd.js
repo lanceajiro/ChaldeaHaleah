@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 // Use global.scripts if already set; otherwise, require it directly.
-const scriptsUtils = global.scripts || require('./scripts'); // Fixed: Added proper fallback
+const scriptsUtils = global.scripts
 
 /**
  * Helper: Unloads a command from the global cache and Node's require cache.

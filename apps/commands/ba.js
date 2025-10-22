@@ -7,7 +7,7 @@ export const meta = {
   description: 'Send a random blue archive photo',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'fun',
+  category: 'anime',
   type: 'anyone',
   cooldown: 5,
   guide: ['']

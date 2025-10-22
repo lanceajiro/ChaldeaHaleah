@@ -24,7 +24,7 @@ export const meta = {
   guide: ["[video_link]"],
   cooldown: 0,
   type: "anyone",
-  category: "media",
+  category: "downloader",
 };
 
 const __filename = fileURLToPath(import.meta.url);

@@ -7,7 +7,7 @@ export const meta = {
   description: "Get a random fun fact to brighten your day!",
   author: "FunFactBotDev",
   prefix: "both",
-  category: "utility",
+  category: "random",
   type: "anyone",
   cooldown: 5,
   guide: ""

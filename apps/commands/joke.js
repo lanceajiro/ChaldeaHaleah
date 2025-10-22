@@ -7,7 +7,7 @@ export const meta = {
   description: "Get a random joke to make you laugh!",
   author: "JokeBotDev",
   prefix: "both",
-  category: "utility",
+  category: "random",
   type: "anyone",
   cooldown: 5,
   guide: ""
