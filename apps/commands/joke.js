@@ -27,11 +27,7 @@ export async function onStart({ bot, msg, chatId, response }) {
   try {
     const joke = await fetchJoke();
     if (!joke) {
-      await bot.editMessageText('⚠️ Could not retrieve a joke from the API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not retrieve a joke from the API.', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -50,9 +46,7 @@ export async function onStart({ bot, msg, chatId, response }) {
     ];
 
     // Edit loading message to show the joke
-    await bot.editMessageText(`🤣 *Here's a joke:*\n\n_${joke}_`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
+    await response.editText(loadingMsg, `🤣 *Here's a joke:*\n\n_${joke}_`, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: inlineKeyboard }
     });
@@ -71,16 +65,9 @@ export async function onStart({ bot, msg, chatId, response }) {
       ]
     ];
 
-    await bot.editMessageReplyMarkup(
-      { inline_keyboard: updatedKeyboard },
-      { chat_id: msg.chat.id, message_id: loadingMsg.message_id }
-    );
+    await response.editMarkup(loadingMsg, { inline_keyboard: updatedKeyboard });
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch joke: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch joke: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }
 

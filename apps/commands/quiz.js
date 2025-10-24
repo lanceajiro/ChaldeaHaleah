@@ -38,11 +38,7 @@ export async function onStart({ bot, msg, response }) {
 
     const quiz = res.data?.results?.[0];
     if (!quiz) {
-      await bot.editMessageText("⚠️ Could not retrieve a quiz question from the API.", {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: "Markdown",
-      });
+      await response.editText(loadingMsg, "⚠️ Could not retrieve a quiz question from the API.", { parse_mode: "Markdown" });
       return;
     }
 
@@ -66,22 +62,13 @@ export async function onStart({ bot, msg, response }) {
 
     const text = `🎯 *Quiz Time!*\n\n❓ *Question:* ${question}\n\nSelect the correct answer below:`;
 
-    await bot.editMessageText(text, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: "Markdown",
-      reply_markup: { inline_keyboard: inlineKeyboard },
-    });
+    await response.editText(loadingMsg, text, { parse_mode: "Markdown", reply_markup: { inline_keyboard: inlineKeyboard } });
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch quiz: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: "Markdown",
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch quiz: ${error.message}`, { parse_mode: "Markdown" });
   }
 }
 
-export async function onCallback({ bot, chatId, messageId, payload, callbackQuery }) {
+export async function onCallback({ bot, chatId, messageId, payload, callbackQuery, response }) {
   try {
     const parts = callbackQuery.data.split(":");
     if (parts.length < 3) {
@@ -105,11 +92,7 @@ export async function onCallback({ bot, chatId, messageId, payload, callbackQuer
       ? `🎉 *Correct!* The answer is *${correct}*`
       : `😢 *Wrong!* You chose *${chosen}*\n\n✅ The correct answer was *${correct}*`;
 
-    await bot.editMessageText(`${emoji} ${feedback}`, {
-      chat_id: chatId,
-      message_id: messageId,
-      parse_mode: "Markdown",
-    });
+    await response.editText({ chatId, messageId }, `${emoji} ${feedback}`, { parse_mode: "Markdown" });
 
     await bot.answerCallbackQuery(callbackQuery.id, {
       text: isCorrect ? "Correct!" : "Wrong!",

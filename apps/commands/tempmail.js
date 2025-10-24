@@ -24,31 +24,19 @@ export async function onStart({ bot, msg, args, response, usages }) {
     const email = res.data?.email;
 
     if (!email) {
-      await bot.editMessageText('⚠️ Could not generate a temporary email address.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not generate a temporary email address.', { parse_mode: 'Markdown' });
       return;
     }
 
     const text = `✉️ *Temporary Email Generated!*\n\n📧 *Email:* \`${email}\`\n\n⚠️ *Note:* This email address is temporary. Do not use it for important accounts.`;
 
     // Edit loading message to success message
-    await bot.editMessageText('✅ *Temp email generated successfully!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✅ *Temp email generated successfully!*', { parse_mode: 'Markdown' });
 
     // Send email info
-    await bot.sendMessage(msg.chat.id, text, { parse_mode: 'Markdown' });
+    await response.reply(text, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to generate temp email: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to generate temp email: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }

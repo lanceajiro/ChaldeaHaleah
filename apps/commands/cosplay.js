@@ -87,10 +87,7 @@ export async function onStart({ msg, bot, chatId, log, response }) {
     ];
 
     try {
-      await bot.editMessageReplyMarkup(
-        { inline_keyboard: updatedKeyboard },
-        { chat_id: chatId, message_id: sentMessage.message_id }
-      );
+      await response.editMarkup(sentMessage, { inline_keyboard: updatedKeyboard });
     } catch (err) {
       console.error("Failed to update inline keyboard: " + err.message);
     }
@@ -100,7 +97,7 @@ export async function onStart({ msg, bot, chatId, log, response }) {
   }
 }
 
-async function onCallback({ bot, callbackQuery, payload }) {
+async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
     // Validate that the callback is for the cosplay command and the message id matches.
     if (payload.command !== "cosplay") return;
@@ -127,18 +124,11 @@ async function onCallback({ bot, callbackQuery, payload }) {
     ];
 
     // Edit the message media to update the video and caption
-    await bot.editMessageMedia(
-      {
-        type: "video",
-        media: videoUrl,
-        caption: "Here's a random cosplay video!"
-      },
-      {
-        chat_id: callbackQuery.message.chat.id,
-        message_id: payload.gameMessageId,
-        reply_markup: { inline_keyboard: updatedKeyboard }
-      }
-    );
+    await response.editMedia({ chatId: callbackQuery.message.chat.id, messageId: payload.gameMessageId }, {
+      type: "video",
+      media: videoUrl,
+      caption: "Here's a random cosplay video!"
+    }, { reply_markup: { inline_keyboard: updatedKeyboard } });
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {

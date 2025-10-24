@@ -36,27 +36,16 @@ export async function onStart({ bot, msg, args, response, usages }) {
     });
 
     // Edit loading message to success
-    await bot.editMessageText(`✨ *Image generated for:* _${prompt}_`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `✨ *Image generated for:* _${prompt}_`, { parse_mode: 'Markdown' });
 
     // Send generated image as photo
-    await bot.sendPhoto(msg.chat.id, Buffer.from(imageRes.data), {
-      caption: `🎨 *Prompt:* ${prompt}`,
-      parse_mode: 'Markdown'
-    });
+    await response.photo(Buffer.from(imageRes.data), { caption: `🎨 *Prompt:* ${prompt}`, parse_mode: 'Markdown' });
 
   } catch (error) {
     // Try to edit the loading message with the error; fallback to plain reply if edit fails
     const errText = `⚠️ Image generation failed${error?.message ? `: ${error.message}` : '.'}`;
     try {
-      await bot.editMessageText(errText, {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, errText, { parse_mode: 'Markdown' });
     } catch (e) {
       await response.reply(errText, { parse_mode: 'Markdown' });
     }

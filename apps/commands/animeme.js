@@ -62,10 +62,7 @@ export async function onStart({ bot, msg, chatId, response }) {
     ];
 
     try {
-      await bot.editMessageReplyMarkup(
-        { inline_keyboard: updatedKeyboard },
-        { chat_id: chatId, message_id: sentMessage.message_id }
-      );
+      await response.editMarkup(sentMessage, { inline_keyboard: updatedKeyboard });
     } catch (err) {
       console.error("Failed to update inline keyboard: " + err.message);
     }
@@ -75,7 +72,7 @@ export async function onStart({ bot, msg, chatId, response }) {
   }
 }
 
-async function onCallback({ bot, callbackQuery, payload }) {
+async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
     if (payload.command !== "animeme") return;
     if (!payload.gameMessageId || callbackQuery.message.message_id !== payload.gameMessageId) return;
@@ -100,18 +97,11 @@ async function onCallback({ bot, callbackQuery, payload }) {
       ],
     ];
 
-    await bot.editMessageMedia(
-      {
-        type: "photo",
-        media: meme.url,
-        caption: meme.title
-      },
-      {
-        chat_id: callbackQuery.message.chat.id,
-        message_id: payload.gameMessageId,
-        reply_markup: { inline_keyboard: updatedKeyboard }
-      }
-    );
+    await response.editMedia({ chatId: callbackQuery.message.chat.id, messageId: payload.gameMessageId }, {
+      type: "photo",
+      media: meme.url,
+      caption: meme.title
+    }, { reply_markup: { inline_keyboard: updatedKeyboard } });
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {

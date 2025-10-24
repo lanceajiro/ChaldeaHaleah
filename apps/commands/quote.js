@@ -30,11 +30,7 @@ export async function onStart({ bot, msg, chatId, response }) {
     const author = data?.author;
 
     if (!quote || !author) {
-      await bot.editMessageText('⚠️ Could not retrieve a quote from the API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not retrieve a quote from the API.', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -55,12 +51,7 @@ export async function onStart({ bot, msg, chatId, response }) {
     ];
 
     // Edit message to show quote and add refresh button
-    await bot.editMessageText(text, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: inlineKeyboard }
-    });
+    await response.editText(loadingMsg, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: inlineKeyboard } });
 
     // Update keyboard with actual message ID
     const updatedKeyboard = [
@@ -76,28 +67,22 @@ export async function onStart({ bot, msg, chatId, response }) {
       ]
     ];
 
-    await bot.editMessageReplyMarkup(
-      { inline_keyboard: updatedKeyboard },
-      { chat_id: msg.chat.id, message_id: loadingMsg.message_id }
-    );
+    await response.editMarkup(loadingMsg, { inline_keyboard: updatedKeyboard });
 
   } catch (error) {
     const fallbackQuote = "Life is what happens when you're busy making other plans.";
     const fallbackAuthor = "John Lennon";
 
-    await bot.editMessageText(
+    await response.editText(
+      loadingMsg,
       `⚠️ Failed to fetch quote. Here's a fallback:\n\n_"${fallbackQuote}"_\n\n— *${fallbackAuthor}*`,
-      {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      }
+      { parse_mode: 'Markdown' }
     );
   }
 }
 
 // Callback handler for refresh button
-export async function onCallback({ bot, callbackQuery, payload }) {
+export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
     if (payload.command !== 'quote') return;
     if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
@@ -126,9 +111,7 @@ export async function onCallback({ bot, callbackQuery, payload }) {
       ]
     ];
 
-    await bot.editMessageText(text, {
-      chat_id: callbackQuery.message.chat.id,
-      message_id: payload.messageId,
+    await response.editText({ chatId: callbackQuery.message.chat.id, messageId: payload.messageId }, text, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: updatedKeyboard }
     });

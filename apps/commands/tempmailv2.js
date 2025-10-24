@@ -53,20 +53,12 @@ export async function onStart({ bot, msg, args, response, usages }) {
       `🪪 *Token:* \`${token.token}\`\n\n⚠️ *Note:* Save these details if you want to check incoming mail via Mail.tm API.`;
 
     // Edit loading message to success
-    await bot.editMessageText('✅ *Temp mail account created successfully!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✅ *Temp mail account created successfully!*', { parse_mode: 'Markdown' });
 
     // Send email info to user
-    await bot.sendMessage(msg.chat.id, text, { parse_mode: 'Markdown' });
+    await response.reply(text, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to generate temp mail account: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to generate temp mail account: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }

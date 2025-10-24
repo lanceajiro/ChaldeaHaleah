@@ -42,10 +42,7 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     const data = res.data;
 
-    if (!data || !data.result) {
-      await response.editText(loadingMsg, '⚠️ No response from AI.', { parse_mode: 'Markdown' });
-      return;
-    }
+    if (!data || !data.result) return await response.editText(loadingMsg, '⚠️ No response from AI.', { parse_mode: 'Markdown' });
 
     const result = data.result;
 

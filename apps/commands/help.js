@@ -92,7 +92,7 @@ export async function onStart({ bot, chatId, msg, response }) {
       const waifuUrl = await getRandomWaifuUrl();
 
       // Send the help as a photo with caption so we can replace the image & caption on page switches.
-      const sentPhoto = await bot.sendPhoto(chatId, waifuUrl, {
+      const sentPhoto = await response.photo(waifuUrl, {
         caption: helpMessage,
         parse_mode: "Markdown",
         reply_markup:
@@ -112,18 +112,11 @@ export async function onStart({ bot, chatId, msg, response }) {
       // Update inline buttons with instanceId if needed.
       if (replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length) {
         const newReplyMarkup = updateReplyMarkupWithInstanceId(replyMarkup, instanceId);
-        await bot.editMessageReplyMarkup(newReplyMarkup, {
-          chat_id: chatId,
-          message_id: sentPhoto.message_id,
-        });
+        await response.editMarkup(sentPhoto, newReplyMarkup);
       }
 
       // Clean up loading message if possible.
-      try {
-        await bot.deleteMessage(chatId, loading.message_id);
-      } catch (e) {
-        // ignore if cannot delete
-      }
+      try { await response.delete(loading); } catch (e) {}
     } else {
       // Text-only behavior (original): send help message as text.
       const sentMsg = await response.reply(helpMessage, {
@@ -145,10 +138,7 @@ export async function onStart({ bot, chatId, msg, response }) {
       // Update inline buttons with instanceId.
       if (replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length) {
         const newReplyMarkup = updateReplyMarkupWithInstanceId(replyMarkup, instanceId);
-        await bot.editMessageReplyMarkup(newReplyMarkup, {
-          chat_id: chatId,
-          message_id: sentMsg.message_id,
-        });
+        await response.editMarkup(sentMsg, newReplyMarkup);
       }
     }
   } catch (error) {
@@ -215,20 +205,11 @@ async function onCallback({ bot, callbackQuery }) {
           caption: helpMessage,
           parse_mode: "Markdown",
         };
-        await bot.editMessageMedia(media, {
-          chat_id,
-          message_id: callbackQuery.message.message_id,
-          reply_markup: newReplyMarkup,
-        });
+        await response.editMedia(callbackQuery.message, media, { reply_markup: newReplyMarkup });
       } catch (err) {
         // If editMessageMedia fails (some bots/permissions), fallback to editing caption and reply markup only.
         try {
-          await bot.editMessageCaption(helpMessage, {
-            chat_id,
-            message_id: callbackQuery.message.message_id,
-            parse_mode: "Markdown",
-            reply_markup: newReplyMarkup,
-          });
+          await response.editCaption(callbackQuery.message, helpMessage, { parse_mode: "Markdown", reply_markup: newReplyMarkup });
           // Note: we cannot replace the photo in this fallback.
         } catch (err2) {
           console.error("Failed to edit media or caption for help command:", err2);
@@ -237,12 +218,7 @@ async function onCallback({ bot, callbackQuery }) {
     } else {
       // Text-only: edit the message text and reply markup (original behavior).
       try {
-        await bot.editMessageText(helpMessage, {
-          chat_id,
-          message_id: callbackQuery.message.message_id,
-          parse_mode: "Markdown",
-          reply_markup: newReplyMarkup,
-        });
+        await response.editText(callbackQuery.message, helpMessage, { parse_mode: "Markdown", reply_markup: newReplyMarkup });
       } catch (err) {
         console.error("Failed to edit help text for help command:", err);
       }

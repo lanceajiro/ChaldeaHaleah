@@ -27,11 +27,7 @@ export async function onStart({ bot, msg, chatId, response }) {
   try {
     const meal = await fetchRecipe();
     if (!meal) {
-      await bot.editMessageText('⚠️ Could not retrieve a recipe from the API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not retrieve a recipe from the API.', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -65,9 +61,9 @@ export async function onStart({ bot, msg, chatId, response }) {
     ];
 
     // Edit loading message to show recipe image + info
-    await bot.deleteMessage(msg.chat.id, loadingMsg.message_id);
+    await response.delete(loadingMsg);
 
-    const sentMsg = await bot.sendPhoto(msg.chat.id, meal.strMealThumb, {
+    const sentMsg = await response.photo(meal.strMealThumb, {
       caption,
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: inlineKeyboard }
@@ -87,17 +83,10 @@ export async function onStart({ bot, msg, chatId, response }) {
       ]
     ];
 
-    await bot.editMessageReplyMarkup(
-      { inline_keyboard: updatedKeyboard },
-      { chat_id: msg.chat.id, message_id: sentMsg.message_id }
-    );
+    await response.editMarkup(sentMsg, { inline_keyboard: updatedKeyboard });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch recipe: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch recipe: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }
 

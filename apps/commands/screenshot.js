@@ -35,24 +35,10 @@ export async function onStart({ bot, msg, args, response, usages }) {
       throw new Error('No screenshot URL found in response.');
     }
 
-    await bot.editMessageText('✅ *Screenshot captured successfully!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✅ *Screenshot captured successfully!*', { parse_mode: 'Markdown' });
 
-    await bot.sendPhoto(msg.chat.id, data.iurl, {
-      caption: `🖼️ *Website Screenshot*\n🌐 URL: ${url}`,
-      parse_mode: 'Markdown'
-    });
+    await response.photo(data.iurl, { caption: `🖼️ *Website Screenshot*\n🌐 URL: ${url}`, parse_mode: 'Markdown' });
   } catch (error) {
-    await bot.editMessageText(
-      `❌ *Failed to capture screenshot:*\n${error.response?.data?.error || error.message}`,
-      {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      }
-    );
+    await response.editText(loadingMsg, `❌ *Failed to capture screenshot:*\n${error.response?.data?.error || error.message}`, { parse_mode: 'Markdown' });
   }
 }

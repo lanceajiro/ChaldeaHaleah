@@ -25,11 +25,7 @@ export async function onStart({ bot, msg, chatId, response }) {
   try {
     const fact = await fetchFunFact();
     if (!fact) {
-      await bot.editMessageText('⚠️ Could not retrieve a fun fact from the API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not retrieve a fun fact from the API.', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -48,9 +44,7 @@ export async function onStart({ bot, msg, chatId, response }) {
     ];
 
     // Edit the loading message to display the fact with refresh button
-    await bot.editMessageText(`💡 *Did you know?*\n\n_${fact}_`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
+    await response.editText(loadingMsg, `💡 *Did you know?*\n\n_${fact}_`, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: inlineKeyboard }
     });
@@ -69,21 +63,14 @@ export async function onStart({ bot, msg, chatId, response }) {
       ]
     ];
 
-    await bot.editMessageReplyMarkup(
-      { inline_keyboard: updatedKeyboard },
-      { chat_id: msg.chat.id, message_id: loadingMsg.message_id }
-    );
+    await response.editMarkup(loadingMsg, { inline_keyboard: updatedKeyboard });
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch fun fact: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch fun fact: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }
 
 // Callback handler for refresh button
-export async function onCallback({ bot, callbackQuery, payload }) {
+export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
     if (payload.command !== 'funfact') return;
     if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
@@ -107,9 +94,7 @@ export async function onCallback({ bot, callbackQuery, payload }) {
       ]
     ];
 
-    await bot.editMessageText(`💡 *Did you know?*\n\n_${fact}_`, {
-      chat_id: callbackQuery.message.chat.id,
-      message_id: payload.messageId,
+    await response.editText({ chatId: callbackQuery.message.chat.id, messageId: payload.messageId }, `💡 *Did you know?*\n\n_${fact}_`, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: updatedKeyboard }
     });
