@@ -29,16 +29,12 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     // basic validation
     if (!data || !data.current_condition || !data.current_condition.length) {
-      // edit the loading message using bot (node-telegram-bot-api)
+      // edit the loading message using response
       try {
-        await bot.editMessageText(`❌ City *${query}* not found or wttr.in returned no data.`, {
-          chat_id: msg.chat.id,
-          message_id: loadingMsg.message_id,
-          parse_mode: 'Markdown'
-        });
+        await response.editText(loadingMsg, `❌ City *${query}* not found or wttr.in returned no data.`, { parse_mode: 'Markdown' });
       } catch (e) {
         // fallback: try deleting then reply
-        try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+        try { await response.delete(loadingMsg); } catch {}
         await response.reply(`❌ City *${query}* not found or wttr.in returned no data.`, { parse_mode: 'Markdown' });
       }
       return;
@@ -71,25 +67,21 @@ export async function onStart({ bot, msg, args, response, usages }) {
 `;
 
     // delete the loading message before sending final response
-    try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch (e) {}
+    try { await response.delete(loadingMsg); } catch (e) {}
 
     // send weather icon as photo with caption
     await response.photo(iconUrl, { caption, parse_mode: 'Markdown' });
 
   } catch (error) {
-    // try to update the loading message using bot
+    // try to update the loading message using response
     const errText = error?.response?.status
       ? `⚠️ API error: received status ${error.response.status}`
       : `⚠️ An error occurred: ${error.message}`;
 
     try {
-      await bot.editMessageText(errText, {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, errText, { parse_mode: 'Markdown' });
     } catch (e) {
-      try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+      try { await response.delete(loadingMsg); } catch {}
       await response.reply(errText, { parse_mode: 'Markdown' });
     }
   }

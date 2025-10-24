@@ -71,15 +71,9 @@ async function loadDirectory(directory, moduleType, collection) {
         // validate the module as before
         validateModule(moduleExport, moduleType);
 
-        // create a trimmed copy to register into the global collection:
-        // - for commands: keep only meta.name and meta.aliases
-        // - for events: keep only meta.name
-        let registeredModule;
-
+        // Validate identifiers and store full meta without trimming.
         if (moduleType === 'command') {
           const { name, aliases = [] } = moduleExport.meta;
-
-          // duplicate checks against usedIdentifiers
           if (usedIdentifiers.has(name)) {
             throw new Error(`Duplicate command name "${name}"`);
           }
@@ -88,32 +82,18 @@ async function loadDirectory(directory, moduleType, collection) {
               throw new Error(`Duplicate alias "${alias}" for command "${name}"`);
             }
           }
-
-          // mark identifiers as used
           usedIdentifiers.add(name);
           aliases.forEach(alias => usedIdentifiers.add(alias));
-
-          // register a trimmed copy (does not contain the full meta)
-          registeredModule = {
-            ...moduleExport,
-            meta: { name, aliases }
-          };
         } else {
-          // events (or other module types) — only register meta.name
           const { name } = moduleExport.meta;
           if (usedIdentifiers.has(name)) {
             throw new Error(`Duplicate event name "${name}"`);
           }
           usedIdentifiers.add(name);
-
-          registeredModule = {
-            ...moduleExport,
-            meta: { name }
-          };
         }
 
-        // store the trimmed module in the collection keyed by name
-        collection.set(registeredModule.meta.name, registeredModule);
+        // store the full module (with full meta) in the collection keyed by name
+        collection.set(moduleExport.meta.name, moduleExport);
       } catch (error) {
         console.error(`Error loading ${moduleType} "${file}": ${error.message}`);
         errors[file] = error;

@@ -7,7 +7,7 @@ export async function command({ bot, message, msg, chatId, args }) {
   const dateNow = Date.now();
   const time = moment.tz(global.settings.timeZone).format("HH:mm:ss DD/MM/YYYY");
 
-  const { admin, symbols, devMode, prefix } = global.settings;
+  const { owner = [], admin = [], symbols, devMode, prefix } = global.settings;
   const { commands, cooldowns } = global.chaldea;
   const { from, chat } = msg;
   const senderID = String(from.id);
@@ -103,10 +103,11 @@ export async function command({ bot, message, msg, chatId, args }) {
     return response.reply(usageText, { parse_mode: "Markdown" });
   };
 
-  const isBotAdmin = admin.includes(senderID);
+  const ownersList = Array.isArray(owner) && owner.length ? owner : admin;
+  const isOwner = ownersList.map(String).includes(senderID);
   const isVIP = global.vip.uid.includes(senderID);
 
-  if (command.meta.type === "administrator" && !isBotAdmin) {
+  if (command.meta.type === "administrator" && !isOwner) {
     if (!["group", "supergroup"].includes(chat.type)) {
       return response.reply(
         `The "${command.meta.name}" command can only be used in a group or supergroup by an administrator.`
@@ -115,18 +116,17 @@ export async function command({ bot, message, msg, chatId, args }) {
     try {
       const member = await bot.getChatMember(chatId, senderID);
       if (!(member.status === "administrator" || member.status === "creator")) {
-        return response.reply(
-          `You do not have sufficient permission to use the "${command.meta.name}" command. (Requires group administrator)`
-        );
+        return response.reply(`You must be a group administrator to use "${command.meta.name}".`);
       }
     } catch (error) {
       return response.reply("Unable to verify your group admin status. Please try again later.");
     }
   }
 
-  if (!isBotAdmin) {
-    if (command.meta.type === "admin") {
-      return response.reply(`You do not have sufficient permission to use the "${command.meta.name}" command.`);
+  const requiresOwner = command.meta.type === "owner" || command.meta.type === "admin";
+  if (!isOwner) {
+    if (requiresOwner) {
+      return response.reply(`Only bot owners can use the "${command.meta.name}" command.`);
     }
     if (command.meta.type === "vip" && !isVIP) {
       return response.reply(`You do not have VIP access to use the "${command.meta.name}" command.`);
@@ -139,7 +139,7 @@ export async function command({ bot, message, msg, chatId, args }) {
     }
   }
 
-  if (!isBotAdmin) {
+  if (!isOwner) {
     if (!cooldowns.has(command.meta.name)) {
       cooldowns.set(command.meta.name, new Map());
     }
@@ -159,7 +159,7 @@ export async function command({ bot, message, msg, chatId, args }) {
       msg,
       chatId,
       args: commandArgs,
-      type: isBotAdmin ? "admin" : "anyone",
+      type: isOwner ? "owner" : "anyone",
       userId,
       usages
     };
