@@ -34,11 +34,7 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     const messages = data['hydra:member'];
     if (!messages || messages.length === 0) {
-      await bot.editMessageText('📭 *Your inbox is empty.*', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '📭 *Your inbox is empty.*', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -49,25 +45,10 @@ export async function onStart({ bot, msg, args, response, usages }) {
       )
       .join('\n\n');
 
-    await bot.editMessageText('✅ *Fetched inbox successfully!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✅ *Fetched inbox successfully!*', { parse_mode: 'Markdown' });
 
-    await bot.sendMessage(
-      msg.chat.id,
-      `📥 *Inbox Messages:*\n\n${formatted}`,
-      { parse_mode: 'Markdown' }
-    );
+    await response.reply(`📥 *Inbox Messages:*\n\n${formatted}`, { parse_mode: 'Markdown' });
   } catch (error) {
-    await bot.editMessageText(
-      `⚠️ *Failed to fetch inbox:*\n${error.response?.data?.error || error.message}`,
-      {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      }
-    );
+    await response.editText(loadingMsg, `⚠️ *Failed to fetch inbox:*\n${error.response?.data?.error || error.message}`, { parse_mode: 'Markdown' });
   }
 }

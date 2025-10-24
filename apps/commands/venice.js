@@ -27,13 +27,9 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     if (!data?.success || !data?.result) {
       try {
-        await bot.editMessageText('❌ Failed to get a response from Venice. Please try again later.', {
-          chat_id: msg.chat.id,
-          message_id: loadingMsg.message_id,
-          parse_mode: 'Markdown'
-        });
+        await response.editText(loadingMsg, '❌ Failed to get a response from Venice. Please try again later.', { parse_mode: 'Markdown' });
       } catch (e) {
-        try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+        try { await response.delete(loadingMsg); } catch {}
         await response.reply('❌ Failed to get a response from Venice. Please try again later.', { parse_mode: 'Markdown' });
       }
       return;
@@ -42,7 +38,7 @@ export async function onStart({ bot, msg, args, response, usages }) {
     const replyText = `\n\n${data.result}`;
 
     // Delete the loading message before sending the final answer
-    try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+    try { await response.delete(loadingMsg); } catch {}
 
     await response.reply(replyText, { parse_mode: 'Markdown' });
 
@@ -52,13 +48,9 @@ export async function onStart({ bot, msg, args, response, usages }) {
       : `⚠️ An error occurred: ${error.message}`;
 
     try {
-      await bot.editMessageText(errText, {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, errText, { parse_mode: 'Markdown' });
     } catch (e) {
-      try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+      try { await response.delete(loadingMsg); } catch {}
       await response.reply(errText, { parse_mode: 'Markdown' });
     }
   }

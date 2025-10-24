@@ -23,11 +23,7 @@ export async function onStart({ bot, msg, args, response, usages }) {
     const { data } = await axios.get(`https://api.internal.temp-mail.io/api/v3/email/${encodeURIComponent(email)}/messages`);
 
     if (!data || data.length === 0) {
-      await bot.editMessageText(`📭 *No messages found for* \`${email}\``, {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, `📭 *No messages found for* \`${email}\``, { parse_mode: 'Markdown' });
       return;
     }
 
@@ -40,22 +36,15 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     const inboxMessage = `📥 *Inbox for:* \`${email}\`\n\n${inboxList}`;
 
-    await bot.editMessageText('✅ *Fetched inbox successfully!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✅ *Fetched inbox successfully!*', { parse_mode: 'Markdown' });
 
-    await bot.sendMessage(msg.chat.id, inboxMessage, { parse_mode: 'Markdown' });
+    await response.reply(inboxMessage, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(
+    await response.editText(
+      loadingMsg,
       `⚠️ *Failed to fetch inbox:*\n${error.response?.data?.error || error.message}`,
-      {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      }
+      { parse_mode: 'Markdown' }
     );
   }
 }

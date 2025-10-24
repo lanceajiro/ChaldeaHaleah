@@ -24,26 +24,14 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     const fact = res.data?.fact;
     if (!fact) {
-      await bot.editMessageText('⚠️ Could not retrieve a cat fact from the API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not retrieve a cat fact from the API.', { parse_mode: 'Markdown' });
       return;
     }
 
     // edit the loading message to show the fact
-    await bot.editMessageText(`✨ *Cat Fact:*\n\n_${fact}_`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `✨ *Cat Fact:*\n\n_${fact}_`, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch cat fact: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch cat fact: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }

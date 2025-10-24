@@ -27,11 +27,7 @@ export async function onStart({ bot, msg, chatId, response }) {
   try {
     const imageUrl = await fetchDog();
     if (!imageUrl) {
-      await bot.editMessageText('⚠️ Could not retrieve a dog image from the API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not retrieve a dog image from the API.', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -50,7 +46,7 @@ export async function onStart({ bot, msg, chatId, response }) {
     ];
 
     // Send the dog photo
-    const sentMessage = await bot.sendPhoto(msg.chat.id, imageUrl, {
+    const sentMessage = await response.photo(imageUrl, {
       caption: '🐕 *Random Dog Image*',
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: inlineKeyboard }
@@ -70,24 +66,17 @@ export async function onStart({ bot, msg, chatId, response }) {
       ]
     ];
 
-    await bot.editMessageReplyMarkup(
-      { inline_keyboard: updatedKeyboard },
-      { chat_id: msg.chat.id, message_id: sentMessage.message_id }
-    );
+    await response.editMarkup(sentMessage, { inline_keyboard: updatedKeyboard });
 
     // Delete the loading message
-    await bot.deleteMessage(msg.chat.id, loadingMsg.message_id);
+    await response.delete(loadingMsg);
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch dog image: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch dog image: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }
 
 // Callback handler for refresh button
-export async function onCallback({ bot, callbackQuery, payload }) {
+export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
     if (payload.command !== 'dog') return;
     if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
@@ -111,19 +100,12 @@ export async function onCallback({ bot, callbackQuery, payload }) {
       ]
     ];
 
-    await bot.editMessageMedia(
-      {
-        type: 'photo',
-        media: imageUrl,
-        caption: '🐕 *Random Dog Image*',
-        parse_mode: 'Markdown'
-      },
-      {
-        chat_id: callbackQuery.message.chat.id,
-        message_id: payload.messageId,
-        reply_markup: { inline_keyboard: updatedKeyboard }
-      }
-    );
+    await response.editMedia({ chatId: callbackQuery.message.chat.id, messageId: payload.messageId }, {
+      type: 'photo',
+      media: imageUrl,
+      caption: '🐕 *Random Dog Image*',
+      parse_mode: 'Markdown'
+    }, { reply_markup: { inline_keyboard: updatedKeyboard } });
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {

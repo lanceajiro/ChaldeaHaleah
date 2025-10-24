@@ -23,23 +23,12 @@ export async function onStart({ bot, msg, response }) {
     });
 
     // Edit the loading message to show success
-    await bot.editMessageText('✨ *Here’s your random girl photo!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✨ *Here’s your random girl photo!*', { parse_mode: 'Markdown' });
 
     // Send the cosplay photo
-    await bot.sendPhoto(msg.chat.id, Buffer.from(res.data), {
-      caption: '📸 *Random Girl Photo*',
-      parse_mode: 'Markdown'
-    });
+    await response.photo(Buffer.from(res.data), { caption: '📸 *Random Girl Photo*', parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch girl photo: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch girl photo: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }

@@ -27,11 +27,7 @@ export async function onStart({ bot, msg, chatId, response }) {
   try {
     const advice = await fetchAdvice();
     if (!advice) {
-      await bot.editMessageText('⚠️ Could not retrieve advice from the API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Could not retrieve advice from the API.', { parse_mode: 'Markdown' });
       return;
     }
 
@@ -50,9 +46,7 @@ export async function onStart({ bot, msg, chatId, response }) {
     ];
 
     // Edit message to show advice and attach button
-    await bot.editMessageText(`💡 *Random Advice:*\n\n_${advice}_`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
+    await response.editText(loadingMsg, `💡 *Random Advice:*\n\n_${advice}_`, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: inlineKeyboard }
     });
@@ -71,21 +65,14 @@ export async function onStart({ bot, msg, chatId, response }) {
       ]
     ];
 
-    await bot.editMessageReplyMarkup(
-      { inline_keyboard: updatedKeyboard },
-      { chat_id: msg.chat.id, message_id: loadingMsg.message_id }
-    );
+    await response.editMarkup(loadingMsg, { inline_keyboard: updatedKeyboard });
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch advice: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch advice: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }
 
 // Callback handler for refresh button
-export async function onCallback({ bot, callbackQuery, payload }) {
+export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
     if (payload.command !== 'advice') return;
     if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
@@ -109,9 +96,7 @@ export async function onCallback({ bot, callbackQuery, payload }) {
       ]
     ];
 
-    await bot.editMessageText(`💡 *Random Advice:*\n\n_${advice}_`, {
-      chat_id: callbackQuery.message.chat.id,
-      message_id: payload.messageId,
+    await response.editText({ chatId: callbackQuery.message.chat.id, messageId: payload.messageId }, `💡 *Random Advice:*\n\n_${advice}_`, {
       parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: updatedKeyboard }
     });

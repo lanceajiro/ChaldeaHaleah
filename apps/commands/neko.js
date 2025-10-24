@@ -26,23 +26,15 @@ export async function onStart({ bot, msg, response }) {
     const imageRes = await axios.get(imageUrl, { responseType: 'arraybuffer' });
 
     // Edit loading message to success
-    await bot.editMessageText(`✨ *Here’s your random ${meta.name} image!*`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `✨ *Here’s your random ${meta.name} image!*`, { parse_mode: 'Markdown' });
 
     // Send the image
-    await bot.sendPhoto(msg.chat.id, Buffer.from(imageRes.data), {
+    await response.photo(Buffer.from(imageRes.data), {
       caption: `📸 *Random ${meta.name} Image*`,
       parse_mode: 'Markdown'
     });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch ${meta.name} image: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch ${meta.name} image: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }
