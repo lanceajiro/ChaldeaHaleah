@@ -1,4 +1,4 @@
-export async function chat({ bot, message, msg, chatId, args }) {
+export async function chat({ bot, response, msg, chatId, args }) {
   const { commands } = global.chaldea;
 
   for (const [commandName, command] of commands.entries()) {
@@ -6,7 +6,7 @@ export async function chat({ bot, message, msg, chatId, args }) {
       try {
         const shouldContinue = await command.onChat({
           bot,
-          message,
+          response,
           msg,
           chatId,
           args

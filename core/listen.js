@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Message } from './system/message.js';
+import { Response } from './system/message.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +11,7 @@ export async function listen(bot) {
     try {
       const chatId = msg.chat.id;
       const userId = msg.from.id;
-      const message = new Message(bot, msg);
+      const response = new Response(bot, msg);
 
       if (msg.chat.type !== 'private') {
         const assignedIndex = Math.abs(chatId) % bot.totalBots;
@@ -30,7 +30,7 @@ export async function listen(bot) {
           const handler = handlerModule[handlerName];
 
           if (typeof handler === 'function') {
-            await handler({ bot, msg, chatId, userId, message });
+            await handler({ bot, msg, chatId, userId, response });
           } else {
             console.warn(`Handler ${file} does not export a function named "${handlerName}".`);
           }

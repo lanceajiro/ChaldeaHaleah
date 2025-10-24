@@ -1,4 +1,4 @@
-export function callback({ bot, msg, chatId, message }) {
+export function callback({ bot, msg, chatId, response }) {
   if (bot._callbackHandler) {
     bot.removeListener('callback_query', bot._callbackHandler);
   }
@@ -53,6 +53,7 @@ export function callback({ bot, msg, chatId, message }) {
         messageId,
         args: payload.args || [],
         payload,
+        response,
       });
 
       if (!callbackQuery.answered) {
