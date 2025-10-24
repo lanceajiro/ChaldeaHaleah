@@ -46,21 +46,13 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     const data = res.data;
     if (!data) {
-      await bot.editMessageText('⚠️ No response from lyrics API.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ No response from lyrics API.', { parse_mode: 'Markdown' });
       return;
     }
 
     if (data.error) {
       const errMsg = data.message?.error || data.message || 'Unknown error from lyrics API.';
-      await bot.editMessageText(`⚠️ Failed to fetch lyrics: ${errMsg}`, {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, `⚠️ Failed to fetch lyrics: ${errMsg}`, { parse_mode: 'Markdown' });
       return;
     }
 
@@ -70,20 +62,12 @@ export async function onStart({ bot, msg, args, response, usages }) {
     const lyrics = message.lyrics || message.lyric || message.lyrics_body || '';
 
     if (!lyrics) {
-      await bot.editMessageText('⚠️ Lyrics not found for that song.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ Lyrics not found for that song.', { parse_mode: 'Markdown' });
       return;
     }
 
     // Edit the loading message to show success (still using bot.editMessageText)
-    await bot.editMessageText(`💬 *Lyrics found:*\n*${title}* — _${author}_`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `💬 *Lyrics found:*\n*${title}* — _${author}_`, { parse_mode: 'Markdown' });
 
     // Split lyrics into chunks and send each chunk using response.reply (as requested)
     const chunks = splitChunks(lyrics, 3500);
@@ -94,10 +78,6 @@ export async function onStart({ bot, msg, args, response, usages }) {
       await response.reply(text, { parse_mode: 'HTML' });
     }
   } catch (error) {
-    await bot.editMessageText(`⚠️ Failed to fetch lyrics: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Failed to fetch lyrics: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }

@@ -31,17 +31,9 @@ export async function onStart({ bot, msg, args, response, usages }) {
       ? output.slice(0, 4000) + '\n\n⚠️ Output truncated.'
       : output;
 
-    await bot.editMessageText(`🧩 *Command:*\n\`${command}\`\n\n📤 *Output:*\n\`\`\`\n${formattedOutput}\n\`\`\``, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `🧩 *Command:*\n\`${command}\`\n\n📤 *Output:*\n\`\`\`\n${formattedOutput}\n\`\`\``, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(`❌ *Error executing command:*\n\`\`\`\n${error.message}\n\`\`\``, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `❌ *Error executing command:*\n\`\`\`\n${error.message}\n\`\`\``, { parse_mode: 'Markdown' });
   }
 }

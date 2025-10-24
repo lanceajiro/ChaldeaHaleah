@@ -35,33 +35,14 @@ export async function onStart({ bot, msg, args, response, usages }) {
     });
 
     if (!data.startsWith('http')) {
-      await bot.editMessageText('❌ *Upload failed. Please try again.*', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '❌ *Upload failed. Please try again.*', { parse_mode: 'Markdown' });
       return;
     }
 
-    await bot.editMessageText('✅ *Upload successful!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✅ *Upload successful!*', { parse_mode: 'Markdown' });
 
-    await bot.sendMessage(
-      msg.chat.id,
-      `📦 *File Uploaded to Catbox.moe*\n\n🔗 *URL:* ${data}`,
-      { parse_mode: 'Markdown' }
-    );
+    await response.reply(`📦 *File Uploaded to Catbox.moe*\n\n🔗 *URL:* ${data}`, { parse_mode: 'Markdown' });
   } catch (error) {
-    await bot.editMessageText(
-      `⚠️ *Failed to upload file:*\n${error.response?.data?.error || error.message}`,
-      {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      }
-    );
+    await response.editText(loadingMsg, `⚠️ *Failed to upload file:*\n${error.response?.data?.error || error.message}`, { parse_mode: 'Markdown' });
   }
 }

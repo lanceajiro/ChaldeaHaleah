@@ -30,23 +30,11 @@ export async function onStart({ bot, msg, args, response, usages }) {
     const video = data.data;
     const caption = `🎬 *TikTok Downloader V2*\n\n📌 *Title:* ${video.title}\n👤 *Author:* ${video.author.nickname}\n⏱️ *Duration:* ${video.duration}s`;
 
-    await bot.editMessageText('✅ *Video fetched successfully!*', {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, '✅ *Video fetched successfully!*', { parse_mode: 'Markdown' });
 
-    await bot.sendVideo(msg.chat.id, video.play, {
-      caption,
-      thumb: video.cover,
-      parse_mode: 'Markdown'
-    });
+    await response.video(video.play, { caption, thumb: video.cover, parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(`❌ *Failed to fetch TikTok video:*\n${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `❌ *Failed to fetch TikTok video:*\n${error.message}`, { parse_mode: 'Markdown' });
   }
 }

@@ -53,7 +53,7 @@ export async function onStart({ bot, msg, args, response, usages }) {
     }
 
     // delete the loading message before final send (best-effort)
-    try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch (e) {}
+    try { await response.delete(loadingMsg); } catch (e) {}
 
     // Send the Unsplash URL — Telegram will follow redirects and fetch the image.
     // Provide a short caption with attribution link to Unsplash.
@@ -84,13 +84,9 @@ export async function onStart({ bot, msg, args, response, usages }) {
       : `⚠️ An error occurred: ${error.message}`;
 
     try {
-      await bot.editMessageText(errText, {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, errText, { parse_mode: 'Markdown' });
     } catch (e) {
-      try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch (e2) {}
+      try { await response.delete(loadingMsg); } catch (e2) {}
       await response.reply(errText, { parse_mode: 'Markdown' });
     }
   }

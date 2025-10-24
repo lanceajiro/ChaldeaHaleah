@@ -30,13 +30,11 @@ export const meta = {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export async function onStart({ bot, msg, chatId }) {
-  await bot.sendMessage(chatId, "Send a video link, and I'll download it for you!", {
-    parse_mode: "HTML",
-  });
+export async function onStart({ bot, msg, chatId, response }) {
+  await response.reply("Send a video link, and I'll download it for you!", { parse_mode: "HTML" });
 }
 
-export async function onWord({ bot, msg, chatId, args }) {
+export async function onWord({ bot, msg, chatId, args, response }) {
   // prefer msg.text or msg.caption (if message is a captioned media)
   const messageText = (msg.text || msg.caption || "").trim();
 
@@ -49,9 +47,7 @@ export async function onWord({ bot, msg, chatId, args }) {
 
   try {
     // send processing message (we'll delete it later)
-    const wait = await bot.sendMessage(chatId, "⏳ Processing your request...", {
-      reply_to_message_id: messageId,
-    });
+    const wait = await response.reply("⏳ Processing your request...", { noReply: true });
     waitMessageId = wait.message_id;
 
     const tempDir = path.join(__dirname, "..", "..", "temp");
@@ -81,17 +77,17 @@ export async function onWord({ bot, msg, chatId, args }) {
 
     // delete processing message (best-effort)
     try {
-      if (waitMessageId) await bot.deleteMessage(chatId, waitMessageId);
+      if (waitMessageId) await response.delete({ chatId, messageId: waitMessageId });
     } catch (e) {
       // ignore delete errors
     }
 
     // send the video file (using a stream/readable path). Pass options in one object.
-    await bot.sendVideo(chatId, fs.createReadStream(videoPath), {
+    await response.video(fs.createReadStream(videoPath), {
       caption: `${apiData.cp || ""} ✅`,
-      reply_to_message_id: messageId,
       filename: "video.mp4",
       contentType: "video/mp4",
+      noReply: true,
     });
 
     // cleanup
@@ -103,11 +99,11 @@ export async function onWord({ bot, msg, chatId, args }) {
   } catch (error) {
     // try to remove processing message if it exists
     try {
-      if (waitMessageId) await bot.deleteMessage(chatId, waitMessageId);
+      if (waitMessageId) await response.delete({ chatId, messageId: waitMessageId });
     } catch (e) {
       // ignore
     }
 
-    await bot.sendMessage(chatId, `❎ Error: ${error.message || String(error)}`);
+    await response.reply(`❎ Error: ${error.message || String(error)}`);
   }
 }

@@ -54,7 +54,7 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     if (!art) {
       // Couldn't find a suitable artwork after retries
-      try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch (e) {}
+      try { await response.delete(loadingMsg); } catch (e) {}
       await response.reply('❌ Sorry — couldn\'t find a random artwork right now. Try again in a bit.');
       return;
     }
@@ -66,16 +66,14 @@ export async function onStart({ bot, msg, args, response, usages }) {
 `;
 
     // delete loading message before final send
-    try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch (e) {}
+    try { await response.delete(loadingMsg); } catch (e) {}
 
     // send artwork image with caption
     await response.photo(art.imageUrl, { caption, parse_mode: 'Markdown' });
 
   } catch (error) {
     // best-effort cleanup and friendly error
-    try {
-      await bot.deleteMessage(msg.chat.id, loadingMsg.message_id);
-    } catch (e) {}
+    try { await response.delete(loadingMsg); } catch (e) {}
 
     const errText = error?.response?.status
       ? `⚠️ API error: received status ${error.response.status}`
