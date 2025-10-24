@@ -11,7 +11,6 @@ export const meta = {
   prefix: "both",
   type: "anyone",
   category: "system",
-  // Set to true to enable the random waifu photo; false to use text-only help.
   waifu: false,
 };
 
@@ -28,7 +27,6 @@ async function getRandomWaifuUrl() {
   } catch (e) {
     // ignore and fallback
   }
-  // fallback image (public domain / placeholder)
   return "https://i.imgur.com/3ZQ3Z5b.png";
 }
 
@@ -69,6 +67,9 @@ export async function onStart({ bot, chatId, msg, response }) {
     const isBotAdmin = ownersList.map(String).includes(senderID);
     const isGroupAdmin = await checkGroupAdmin(bot, chatId, senderID, chatType);
 
+    // Create a unique session ID early.
+    const instanceId = "help_" + Date.now().toString();
+
     // Generate help message and inline navigation.
     const { helpMessage, replyMarkup } = generateHelpMessage(
       commands,
@@ -80,18 +81,14 @@ export async function onStart({ bot, chatId, msg, response }) {
       effectivePrefix,
       symbols,
       vipUsers,
-      chatType
+      chatType,
+      instanceId // Pass instanceId to generateHelpMessage
     );
 
     // If waifu images are enabled, send photo+caption; otherwise send plain text reply.
     if (meta.waifu) {
-      // Send a temporary loading message (follows your pattern).
       const loading = await response.reply("⌛ Loading help...", { parse_mode: "Markdown" });
-
-      // Fetch a random waifu image to show with the help message.
       const waifuUrl = await getRandomWaifuUrl();
-
-      // Send the help as a photo with caption so we can replace the image & caption on page switches.
       const sentPhoto = await response.photo(waifuUrl, {
         caption: helpMessage,
         parse_mode: "Markdown",
@@ -101,24 +98,16 @@ export async function onStart({ bot, chatId, msg, response }) {
             : undefined,
       });
 
-      // Create a unique session ID and store details.
-      const instanceId = "help_" + Date.now().toString();
+      // Store session details.
       global.chaldea.callbacks.set(instanceId, {
         senderID,
         helpMessageId: sentPhoto.message_id,
         chatId,
       });
 
-      // Update inline buttons with instanceId if needed.
-      if (replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length) {
-        const newReplyMarkup = updateReplyMarkupWithInstanceId(replyMarkup, instanceId);
-        await response.editMarkup(sentPhoto, newReplyMarkup);
-      }
-
-      // Clean up loading message if possible.
+      // Clean up loading message.
       try { await response.delete(loading); } catch (e) {}
     } else {
-      // Text-only behavior (original): send help message as text.
       const sentMsg = await response.reply(helpMessage, {
         parse_mode: "Markdown",
         reply_markup:
@@ -127,77 +116,108 @@ export async function onStart({ bot, chatId, msg, response }) {
             : undefined,
       });
 
-      // Create a unique session ID and store details (for callbacks).
-      const instanceId = "help_" + Date.now().toString();
+      // Store session details.
       global.chaldea.callbacks.set(instanceId, {
         senderID,
         helpMessageId: sentMsg.message_id,
         chatId,
       });
-
-      // Update inline buttons with instanceId.
-      if (replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length) {
-        const newReplyMarkup = updateReplyMarkupWithInstanceId(replyMarkup, instanceId);
-        await response.editMarkup(sentMsg, newReplyMarkup);
-      }
     }
   } catch (error) {
     console.error("Error in help command onStart:", error);
+    await response.reply("⚠️ An error occurred while processing the help command.", { parse_mode: "Markdown" });
   }
 }
 
 async function onCallback({ bot, callbackQuery }) {
   try {
-    // Verify that the callback payload is for the help command.
-    if (!callbackQuery || !callbackQuery.data) return;
+    // Validate callback data.
+    if (!callbackQuery || !callbackQuery.data) {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "Invalid button data." });
+      return;
+    }
+
     let payload;
     try {
       payload = JSON.parse(callbackQuery.data);
     } catch (e) {
-      return; // Invalid payload
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "Invalid button data format." });
+      return;
     }
-    if (payload.command !== "help" || !payload.instanceId) return;
+
+    // Verify the callback is for the help command.
+    if (payload.command !== "help" || !payload.instanceId) {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "Invalid button action." });
+      return;
+    }
 
     const session = global.chaldea.callbacks.get(payload.instanceId);
-    if (!session) return;
-    if (String(callbackQuery.from.id) !== session.senderID) return;
+    if (!session) {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "Session expired. Please use the help command again." });
+      return;
+    }
+
+    if (String(callbackQuery.from.id) !== session.senderID) {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "This button is not for you." });
+      return;
+    }
 
     const newPageNumber = payload.page;
     const { commands } = global.chaldea;
     const { owner = [], admin = [], prefix: globalPrefix, symbols } = global.settings;
     const senderID = String(callbackQuery.from.id);
     const vipUsers = global.vip.uid.includes(senderID);
-    const chat_id = callbackQuery.message.chat.id;
+    const chatId = callbackQuery.message.chat.id;
     const chatType = callbackQuery.message.chat.type;
 
     const effectivePrefix = chatType === "private" ? globalPrefix : globalPrefix;
     const ownersList = Array.isArray(owner) && owner.length ? owner : admin;
     const isBotAdmin = ownersList.map(String).includes(senderID);
-    const isGroupAdmin = await checkGroupAdmin(bot, chat_id, senderID, chatType);
+    const isGroupAdmin = await checkGroupAdmin(bot, chatId, senderID, chatType);
 
+    // Generate new help message and reply markup.
     const { helpMessage, replyMarkup } = generateHelpMessage(
       commands,
       senderID,
       isBotAdmin,
       isGroupAdmin,
       newPageNumber,
-      null, // cleanArg not needed for callbacks
+      null,
       effectivePrefix,
       symbols,
       vipUsers,
-      chatType
+      chatType,
+      payload.instanceId // Pass instanceId to keep buttons consistent
     );
 
-    const newReplyMarkup =
-      replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length
-        ? updateReplyMarkupWithInstanceId(replyMarkup, payload.instanceId)
-        : undefined;
+    // Define response methods using bot (adjust based on your framework).
+    const response = {
+      editMedia: async (message, media, options) => {
+        await bot.editMessageMedia(media, {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          ...options,
+        });
+      },
+      editCaption: async (message, caption, options) => {
+        await bot.editMessageCaption({
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          caption,
+          ...options,
+        });
+      },
+      editText: async (message, text, options) => {
+        await bot.editMessageText(text, {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          ...options,
+        });
+      },
+    };
 
     if (meta.waifu) {
-      // Fetch a new waifu image for this page change.
       const waifuUrl = await getRandomWaifuUrl();
-
-      // Edit the message media (replace photo + update caption) — this keeps things in one message.
       try {
         const media = {
           type: "photo",
@@ -205,70 +225,38 @@ async function onCallback({ bot, callbackQuery }) {
           caption: helpMessage,
           parse_mode: "Markdown",
         };
-        await response.editMedia(callbackQuery.message, media, { reply_markup: newReplyMarkup });
+        await response.editMedia(callbackQuery.message, media, { reply_markup: replyMarkup });
       } catch (err) {
-        // If editMessageMedia fails (some bots/permissions), fallback to editing caption and reply markup only.
+        // Fallback to editing caption only.
         try {
-          await response.editCaption(callbackQuery.message, helpMessage, { parse_mode: "Markdown", reply_markup: newReplyMarkup });
-          // Note: we cannot replace the photo in this fallback.
+          await response.editCaption(callbackQuery.message, helpMessage, {
+            parse_mode: "Markdown",
+            reply_markup: replyMarkup,
+          });
         } catch (err2) {
           console.error("Failed to edit media or caption for help command:", err2);
+          await bot.answerCallbackQuery(callbackQuery.id, { text: "Failed to update help page." });
         }
       }
     } else {
-      // Text-only: edit the message text and reply markup (original behavior).
       try {
-        await response.editText(callbackQuery.message, helpMessage, { parse_mode: "Markdown", reply_markup: newReplyMarkup });
+        await response.editText(callbackQuery.message, helpMessage, {
+          parse_mode: "Markdown",
+          reply_markup: replyMarkup,
+        });
       } catch (err) {
         console.error("Failed to edit help text for help command:", err);
+        await bot.answerCallbackQuery(callbackQuery.id, { text: "Failed to update help page." });
       }
     }
 
     // Update session details.
     session.helpMessageId = callbackQuery.message.message_id;
-    await bot.answerCallbackQuery(callbackQuery.id);
+    await bot.answerCallbackQuery(callbackQuery.id, { text: `Page ${newPageNumber}` });
   } catch (error) {
     console.error("Error in help command onCallback:", error);
+    await bot.answerCallbackQuery(callbackQuery.id, { text: "An error occurred while processing the button." });
   }
-}
-
-/* Helper Functions */
-
-/**
- * Updates inline keyboard buttons so that each callback_data JSON includes the current instanceId.
- */
-function updateReplyMarkupWithInstanceId(replyMarkup, instanceId) {
-  if (!replyMarkup || !replyMarkup.inline_keyboard) return replyMarkup;
-  const updatedKeyboard = replyMarkup.inline_keyboard.map((row) =>
-    row.map((button) => {
-      if (button && button.callback_data) {
-        try {
-          const data = JSON.parse(button.callback_data);
-          data.instanceId = instanceId;
-          return { text: button.text, callback_data: JSON.stringify(data) };
-        } catch (e) {
-          return button;
-        }
-      }
-      return button;
-    })
-  );
-  return { inline_keyboard: updatedKeyboard };
-}
-
-/**
- * Determines whether the sender is an administrator (or creator) in a group chat.
- */
-async function checkGroupAdmin(bot, chatId, senderID, chatType) {
-  if (["group", "supergroup"].includes(chatType)) {
-    try {
-      const member = await bot.getChatMember(chatId, senderID);
-      return member.status === "administrator" || member.status === "creator";
-    } catch (err) {
-      return false;
-    }
-  }
-  return false;
 }
 
 /**
@@ -285,7 +273,8 @@ function generateHelpMessage(
   prefix,
   symbols,
   vipUsers,
-  chatType
+  chatType,
+  instanceId // Add instanceId parameter
 ) {
   const filteredCommands = getFilteredCommands(commands, senderID, isBotAdmin, isGroupAdmin, vipUsers, chatType);
   const totalCommands = filteredCommands.length;
@@ -308,18 +297,18 @@ function generateHelpMessage(
     `📜 *Command List*\n\n${paginatedCommands.join("\n")}\n\n` +
     `*Page:* ${validPage}/${totalPages}\n*Total Commands:* ${totalCommands}`;
 
-  // Build inline navigation buttons.
+  // Build inline navigation buttons with instanceId.
   const inlineButtons = [];
   if (validPage > 1) {
     inlineButtons.push({
       text: "◀️",
-      callback_data: JSON.stringify({ command: "help", instanceId: null, page: validPage - 1 }),
+      callback_data: JSON.stringify({ command: "help", instanceId, page: validPage - 1 }),
     });
   }
   if (validPage < totalPages) {
     inlineButtons.push({
       text: "▶️",
-      callback_data: JSON.stringify({ command: "help", instanceId: null, page: validPage + 1 }),
+      callback_data: JSON.stringify({ command: "help", instanceId, page: validPage + 1 }),
     });
   }
   const replyMarkup = inlineButtons.length ? { inline_keyboard: [inlineButtons] } : {};
@@ -327,9 +316,19 @@ function generateHelpMessage(
   return { helpMessage, replyMarkup };
 }
 
-/**
- * Filters available commands based on the sender's permissions and command type.
- */
+/* Other helper functions remain unchanged */
+async function checkGroupAdmin(bot, chatId, senderID, chatType) {
+  if (["group", "supergroup"].includes(chatType)) {
+    try {
+      const member = await bot.getChatMember(chatId, senderID);
+      return member.status === "administrator" || member.status === "creator";
+    } catch (err) {
+      return false;
+    }
+  }
+  return false;
+}
+
 function getFilteredCommands(commands, senderID, isBotAdmin, isGroupAdmin, vipUsers, chatType) {
   return [...commands.values()]
     .filter((cmd) => {
@@ -346,9 +345,6 @@ function getFilteredCommands(commands, senderID, isBotAdmin, isGroupAdmin, vipUs
     .sort((a, b) => a.meta.name.localeCompare(b.meta.name));
 }
 
-/**
- * Generates a grouped list of all commands.
- */
 function generateAllCommandsMessage(filteredCommands, prefix, symbols) {
   const categories = {};
   filteredCommands.forEach((cmd) => {
@@ -374,9 +370,6 @@ function generateAllCommandsMessage(filteredCommands, prefix, symbols) {
   return blocks.join("\n\n") + `\n\nTotal Commands: ${filteredCommands.length}`;
 }
 
-/**
- * Generates detailed information for a single command.
- */
 function generateCommandInfo(cmdInfo, prefix) {
   const aliases =
     cmdInfo.aliases && cmdInfo.aliases.length
@@ -403,9 +396,6 @@ function generateCommandInfo(cmdInfo, prefix) {
   );
 }
 
-/**
- * Capitalizes the first letter of a given text.
- */
 function capitalize(text) {
   if (!text) return "";
   return text.charAt(0).toUpperCase() + text.slice(1);

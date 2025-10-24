@@ -1,53 +1,52 @@
 export const meta = {
   name: "detect",
-  keyword: ["lance", "wataru", "pastebin.com"], // These keywords trigger the onWord handler
+  keyword: ["lance", "wataru", "pastebin.com"],
   aliases: [],
   version: "0.0.1",
   author: "Lance Cochangco",
-  description: "Detects when an admin's name is mentioned and privately notifies them with complete details.",
-  guide: [""],
+  description: "Detects admin name mentions and privately notifies them with details.",
+  guide: ["Detects keywords in messages and alerts owners."],
   prefix: "both",
   cooldown: 0,
   type: "anyone",
   category: "hidden"
 };
 
-// onStart is called when the command is invoked directly (e.g., via /detect).
 export async function onStart({ bot, msg, response }) {
-  await response.reply("Hello! You've activated the detect command directly.");
-};
+  await response.reply("Hello! You've activated the detect command.");
+}
 
-// onWord is called when one of the keywords is detected in any message.
-async function onWord({ bot, msg, response, args }) {
-  // Detect all keywords that match (case-insensitive, whole-word match)
+export async function onWord({ bot, msg, response }) {
+  // Skip if no message text
+  if (!msg?.text) return;
+
+  // Detect case-insensitive whole-word matches
   const detectedKeywords = meta.keyword.filter(keyword =>
     new RegExp(`\\b${keyword}\\b`, 'i').test(msg.text)
   );
+  if (!detectedKeywords.length) return;
 
-  if (detectedKeywords.length === 0) return;
-
-  // Retrieve the owner IDs from the global configuration (fallback to admin).
-  const owners = Array.isArray(global.settings.owner)
+  // Get owners from global settings (fallback to admin)
+  const owners = Array.isArray(global.settings?.owner)
     ? global.settings.owner
-    : Array.isArray(global.settings.admin)
+    : Array.isArray(global.settings?.admin)
       ? global.settings.admin
       : [];
   if (!owners.length) return;
 
-  // Gather sender (user) details.
-  let senderName = msg.from.first_name || '';
-  if (msg.from.last_name) senderName += ` ${msg.from.last_name}`;
-  const senderUsername = msg.from.username ? ` (@${msg.from.username})` : '';
-  const senderId = msg.from.id;
+  // Build sender details
+  const senderName = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ').trim() || 'Unknown';
+  const senderUsername = msg.from?.username ? ` (@${msg.from.username})` : '';
+  const senderId = msg.from?.id ?? 'Unknown';
 
-  // Gather chat details.
-  const chatTitle = msg.chat.title ? msg.chat.title : "Private Chat";
-  const chatId = msg.chat.id;
+  // Build chat details
+  const chatTitle = msg.chat?.title || 'Private Chat';
+  const chatId = msg.chat?.id ?? 'Unknown';
 
-  // Construct a detailed admin alert message.
+  // Construct alert message
   const details = `
-<b>Admin Alert</b>
-A message mentioning <b>${detectedKeywords.join(', ')}</b> was sent.
+<b>Owner Alert</b>
+Mention of <b>${detectedKeywords.join(', ')}</b> detected.
 
 <b>Chat Details:</b>
 • Chat ID: <code>${chatId}</code>
@@ -58,18 +57,14 @@ A message mentioning <b>${detectedKeywords.join(', ')}</b> was sent.
 • User ID: <code>${senderId}</code>
 
 <b>Message Details:</b>
-• Message ID: <code>${msg.message_id}</code>
+• Message ID: <code>${msg.message_id ?? 'Unknown'}</code>
 • Message Text: <i>${msg.text}</i>
   `;
 
-  // Send a private message to each owner.
-  for (const adminId of owners) {
-    try {
-      await bot.sendMessage(adminId, details, { parse_mode: "HTML" });
-    } catch (error) {
-      console.error(`Failed to notify admin ${adminId}: ${error.message}`);
-    }
+  try {
+    // Notify each owner
+    await response.forOwner(details, { parse_mode: "HTML" });
+  } catch (error) {
+    console.error(`Failed to notify owners: ${error.message}`);
   }
-};
-
-export { onWord };
+}

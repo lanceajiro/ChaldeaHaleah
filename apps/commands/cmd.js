@@ -1,5 +1,10 @@
 import fs from 'fs-extra';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Define __dirname equivalent for ES modules
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 // Use global.scripts if already set; otherwise, require it directly.
 const scriptsUtils = global.scripts
 

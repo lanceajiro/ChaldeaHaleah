@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { Response } from './system/message.js';
+import { R } from './system/response.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +11,7 @@ export async function listen(bot) {
     try {
       const chatId = msg.chat.id;
       const userId = msg.from.id;
-      const response = new Response(bot, msg);
+      const response = new R(bot, msg);
 
       if (msg.chat.type !== 'private') {
         const assignedIndex = Math.abs(chatId) % bot.totalBots;

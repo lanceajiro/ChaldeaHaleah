@@ -1,6 +1,6 @@
 import moment from 'moment-timezone';
 
-export async function command({ bot, message, msg, chatId, args }) {
+export async function command({ bot, response, msg, chatId, args }) {
   if (typeof msg.text !== "string") return;
 
   const text = msg.text;
@@ -12,8 +12,6 @@ export async function command({ bot, message, msg, chatId, args }) {
   const { from, chat } = msg;
   const senderID = String(from.id);
   const userId = from.id;
-  
-  const response = message;
 
   let effectivePrefix = prefix;
 

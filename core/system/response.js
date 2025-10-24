@@ -2,7 +2,7 @@
  * Lightweight response wrapper around node-telegram-bot-api for concise replies.
  * Automatically replies to the triggering message in groups unless disabled via { noReply: true }.
  */
-export class Response {
+export class R {
   constructor(bot, msg) {
     this.bot = bot;
     this.msg = msg;
