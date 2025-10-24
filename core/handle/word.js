@@ -1,4 +1,4 @@
-export async function word({ bot, message, msg, chatId }) {
+export async function word({ bot, response, msg, chatId }) {
   if (!msg || !msg.text) return;
 
   const text = msg.text.trim();
@@ -33,7 +33,7 @@ export async function word({ bot, message, msg, chatId }) {
       if (keywordRegex.test(msg.text)) {
         const args = text.split(/\s+/);
         try {
-          await cmd.onWord({ bot, message, msg, chatId, args });
+          await cmd.onWord({ bot, response, msg, chatId, args });
         } catch (error) {
           console.error(`Error in event handler for command "${cmd.meta.name}": ${error.message}`);
         }

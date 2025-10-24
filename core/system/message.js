@@ -1,4 +1,8 @@
-export class Message {
+/**
+ * Lightweight response wrapper around node-telegram-bot-api for concise replies.
+ * Automatically replies to the triggering message in groups unless disabled via { noReply: true }.
+ */
+export class Response {
   constructor(bot, msg) {
     this.bot = bot;
     this.msg = msg;
@@ -16,11 +20,13 @@ export class Message {
     return finalOptions;
   }
 
+  /** Send a text message */
   reply(text, options = {}) {
     const finalOptions = this._getOptions(options);
     return this.bot.sendMessage(this.chatId, text, finalOptions);
   }
 
+  /** Send a photo */
   photo(photo, options = {}) {
     const finalOptions = this._getOptions(options);
     return this.bot.sendPhoto(this.chatId, photo, finalOptions);
@@ -91,11 +97,18 @@ export class Message {
     return this.bot.sendDice(this.chatId, finalOptions);
   }
 
-  forAdmin(text, options = {}) {
-    const adminIds = global.settings.admin;
-    const promises = adminIds.map(adminId => 
-      this.bot.sendMessage(adminId, text, options)
-    );
+  /** Notify all configured bot owners */
+  forOwner(text, options = {}) {
+    const ownerIds = global.settings.owner || [];
+    const promises = ownerIds.map(ownerId => this.bot.sendMessage(ownerId, text, options));
     return Promise.all(promises);
   }
+
+  /** Backward-compat alias; prefer forOwner */
+  forAdmin(text, options = {}) {
+    return this.forOwner(text, options);
+  }
 }
+
+// Backward-compat export for legacy imports
+export const Message = Response;

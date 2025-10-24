@@ -1,6 +1,6 @@
 import moment from 'moment-timezone';
 
-export async function event({ bot, msg, chatId, message }) {
+export async function event({ bot, msg, chatId, response }) {
   const timeStart = Date.now();
   const formattedTime = moment.tz(global.settings.timeZone).format("HH:mm:ss L");
   const { events } = global.chaldea;
@@ -14,7 +14,7 @@ export async function event({ bot, msg, chatId, message }) {
     for (const [eventName, eventHandler] of events.entries()) {
       if (eventHandler.meta.type.includes(eventType)) {
         try {
-          const context = { bot, message, msg, chatId };
+          const context = { bot, response, msg, chatId };
           await eventHandler.onStart(context);
 
           if (devMode) {
