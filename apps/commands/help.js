@@ -1,3 +1,5 @@
+import axios from "axios";
+
 export const meta = {
   name: "help",
   aliases: ["h"],
@@ -9,9 +11,26 @@ export const meta = {
   prefix: "both",
   type: "anyone",
   category: "system",
+  // Set to true to enable the random waifu photo; false to use text-only help.
+  waifu: false,
 };
 
 const COMMANDS_PER_PAGE = 10;
+
+/**
+ * Fetches a random waifu image URL (uses waifu.pics). Returns a string URL.
+ * Falls back to a placeholder image if the API fails.
+ */
+async function getRandomWaifuUrl() {
+  try {
+    const res = await axios.get("https://api.waifu.pics/sfw/waifu", { timeout: 8000 });
+    if (res && res.data && res.data.url) return res.data.url;
+  } catch (e) {
+    // ignore and fallback
+  }
+  // fallback image (public domain / placeholder)
+  return "https://i.imgur.com/3ZQ3Z5b.png";
+}
 
 export async function onStart({ bot, chatId, msg, response }) {
   try {
@@ -63,27 +82,73 @@ export async function onStart({ bot, chatId, msg, response }) {
       chatType
     );
 
-    // Send help message.
-    const sentMsg = await response.reply(helpMessage, {
-      parse_mode: "Markdown",
-      reply_markup:
-        replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length
-          ? replyMarkup
-          : undefined,
-    });
+    // If waifu images are enabled, send photo+caption; otherwise send plain text reply.
+    if (meta.waifu) {
+      // Send a temporary loading message (follows your pattern).
+      const loading = await response.reply("⌛ Loading help...", { parse_mode: "Markdown" });
 
-    // Create a unique session ID and store details.
-    const instanceId = "help_" + Date.now().toString();
-    global.chaldea.callbacks.set(instanceId, {
-      senderID,
-      helpMessageId: sentMsg.message_id,
-      chatId,
-    });
+      // Fetch a random waifu image to show with the help message.
+      const waifuUrl = await getRandomWaifuUrl();
 
-    // Update inline buttons with instanceId.
-    if (replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length) {
-      const newReplyMarkup = updateReplyMarkupWithInstanceId(replyMarkup, instanceId);
-      await bot.editMessageReplyMarkup(newReplyMarkup, { chat_id: chatId, message_id: sentMsg.message_id });
+      // Send the help as a photo with caption so we can replace the image & caption on page switches.
+      const sentPhoto = await bot.sendPhoto(chatId, waifuUrl, {
+        caption: helpMessage,
+        parse_mode: "Markdown",
+        reply_markup:
+          replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length
+            ? replyMarkup
+            : undefined,
+      });
+
+      // Create a unique session ID and store details.
+      const instanceId = "help_" + Date.now().toString();
+      global.chaldea.callbacks.set(instanceId, {
+        senderID,
+        helpMessageId: sentPhoto.message_id,
+        chatId,
+      });
+
+      // Update inline buttons with instanceId if needed.
+      if (replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length) {
+        const newReplyMarkup = updateReplyMarkupWithInstanceId(replyMarkup, instanceId);
+        await bot.editMessageReplyMarkup(newReplyMarkup, {
+          chat_id: chatId,
+          message_id: sentPhoto.message_id,
+        });
+      }
+
+      // Clean up loading message if possible.
+      try {
+        await bot.deleteMessage(chatId, loading.message_id);
+      } catch (e) {
+        // ignore if cannot delete
+      }
+    } else {
+      // Text-only behavior (original): send help message as text.
+      const sentMsg = await response.reply(helpMessage, {
+        parse_mode: "Markdown",
+        reply_markup:
+          replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length
+            ? replyMarkup
+            : undefined,
+      });
+
+      // Create a unique session ID and store details (for callbacks).
+      const instanceId = "help_" + Date.now().toString();
+      global.chaldea.callbacks.set(instanceId, {
+        senderID,
+        helpMessageId: sentMsg.message_id,
+        chatId,
+      });
+
+      // Update inline buttons with instanceId.
+      if (replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length) {
+        const newReplyMarkup = updateReplyMarkupWithInstanceId(replyMarkup, instanceId);
+        await bot.editMessageReplyMarkup(newReplyMarkup, {
+          chat_id: chatId,
+          message_id: sentMsg.message_id,
+        });
+      }
     }
   } catch (error) {
     console.error("Error in help command onStart:", error);
@@ -130,17 +195,56 @@ async function onCallback({ bot, callbackQuery }) {
       vipUsers,
       chatType
     );
+
     const newReplyMarkup =
       replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length
         ? updateReplyMarkupWithInstanceId(replyMarkup, payload.instanceId)
         : undefined;
 
-    await bot.editMessageText(helpMessage, {
-      chat_id,
-      message_id: callbackQuery.message.message_id,
-      parse_mode: "Markdown",
-      reply_markup: newReplyMarkup,
-    });
+    if (meta.waifu) {
+      // Fetch a new waifu image for this page change.
+      const waifuUrl = await getRandomWaifuUrl();
+
+      // Edit the message media (replace photo + update caption) — this keeps things in one message.
+      try {
+        const media = {
+          type: "photo",
+          media: waifuUrl,
+          caption: helpMessage,
+          parse_mode: "Markdown",
+        };
+        await bot.editMessageMedia(media, {
+          chat_id,
+          message_id: callbackQuery.message.message_id,
+          reply_markup: newReplyMarkup,
+        });
+      } catch (err) {
+        // If editMessageMedia fails (some bots/permissions), fallback to editing caption and reply markup only.
+        try {
+          await bot.editMessageCaption(helpMessage, {
+            chat_id,
+            message_id: callbackQuery.message.message_id,
+            parse_mode: "Markdown",
+            reply_markup: newReplyMarkup,
+          });
+          // Note: we cannot replace the photo in this fallback.
+        } catch (err2) {
+          console.error("Failed to edit media or caption for help command:", err2);
+        }
+      }
+    } else {
+      // Text-only: edit the message text and reply markup (original behavior).
+      try {
+        await bot.editMessageText(helpMessage, {
+          chat_id,
+          message_id: callbackQuery.message.message_id,
+          parse_mode: "Markdown",
+          reply_markup: newReplyMarkup,
+        });
+      } catch (err) {
+        console.error("Failed to edit help text for help command:", err);
+      }
+    }
 
     // Update session details.
     session.helpMessageId = callbackQuery.message.message_id;
