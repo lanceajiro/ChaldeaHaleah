@@ -26,13 +26,9 @@ export async function onStart({ bot, msg, args, response, usages }) {
     if (!global.api?.nekolabs) {
       // try to edit the loading message via bot, fallback to delete+reply
       try {
-        await bot.editMessageText('⚠️ Nekolabs API not configured. Set `global.api.nekolabs`.', {
-          chat_id: msg.chat.id,
-          message_id: loadingMsg.message_id,
-          parse_mode: 'Markdown'
-        });
+        await response.editText(loadingMsg, '⚠️ Nekolabs API not configured. Set `global.api.nekolabs`.', { parse_mode: 'Markdown' });
       } catch (e) {
-        try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+        try { await response.delete(loadingMsg); } catch {}
         await response.reply('⚠️ Nekolabs API not configured. Set `global.api.nekolabs`.', { parse_mode: 'Markdown' });
       }
       return;
@@ -43,13 +39,9 @@ export async function onStart({ bot, msg, args, response, usages }) {
 
     if (!data?.success || !data?.result) {
       try {
-        await bot.editMessageText(`❌ Failed to fetch Spotify data for *${query}*. Please try again later.`, {
-          chat_id: msg.chat.id,
-          message_id: loadingMsg.message_id,
-          parse_mode: 'Markdown'
-        });
+        await response.editText(loadingMsg, `❌ Failed to fetch Spotify data for *${query}*. Please try again later.`, { parse_mode: 'Markdown' });
       } catch (e) {
-        try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+        try { await response.delete(loadingMsg); } catch {}
         await response.reply(`❌ Failed to fetch Spotify data for *${query}*. Please try again later.`, { parse_mode: 'Markdown' });
       }
       return;
@@ -70,7 +62,7 @@ export async function onStart({ bot, msg, args, response, usages }) {
 `;
 
     // delete the loading message before sending final response (best effort)
-    try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch (e) {}
+    try { await response.delete(loadingMsg); } catch (e) {}
 
     // send cover image (if available) with markdown caption
     if (cover) {
@@ -98,13 +90,9 @@ export async function onStart({ bot, msg, args, response, usages }) {
       : `⚠️ An error occurred: ${error.message}`;
 
     try {
-      await bot.editMessageText(errText, {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, errText, { parse_mode: 'Markdown' });
     } catch (e) {
-      try { await bot.deleteMessage(msg.chat.id, loadingMsg.message_id); } catch {}
+      try { await response.delete(loadingMsg); } catch {}
       await response.reply(errText, { parse_mode: 'Markdown' });
     }
   }

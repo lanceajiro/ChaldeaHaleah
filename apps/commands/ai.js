@@ -43,27 +43,15 @@ export async function onStart({ bot, msg, args, response, usages }) {
     const data = res.data;
 
     if (!data || !data.result) {
-      await bot.editMessageText('⚠️ No response from AI.', {
-        chat_id: msg.chat.id,
-        message_id: loadingMsg.message_id,
-        parse_mode: 'Markdown'
-      });
+      await response.editText(loadingMsg, '⚠️ No response from AI.', { parse_mode: 'Markdown' });
       return;
     }
 
     const result = data.result;
 
-    await bot.editMessageText(`💬 *AI Response:*\n\n${result}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `💬 *AI Response:*\n\n${result}`, { parse_mode: 'Markdown' });
 
   } catch (error) {
-    await bot.editMessageText(`⚠️ Error: ${error.message}`, {
-      chat_id: msg.chat.id,
-      message_id: loadingMsg.message_id,
-      parse_mode: 'Markdown'
-    });
+    await response.editText(loadingMsg, `⚠️ Error: ${error.message}`, { parse_mode: 'Markdown' });
   }
 }

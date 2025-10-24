@@ -26,9 +26,13 @@ async function onWord({ bot, msg, response, args }) {
 
   if (detectedKeywords.length === 0) return;
 
-  // Retrieve the admin IDs from the global configuration.
-  const adminIds = global.settings.admin;
-  if (!adminIds || !Array.isArray(adminIds) || adminIds.length === 0) return;
+  // Retrieve the owner IDs from the global configuration (fallback to admin).
+  const owners = Array.isArray(global.settings.owner)
+    ? global.settings.owner
+    : Array.isArray(global.settings.admin)
+      ? global.settings.admin
+      : [];
+  if (!owners.length) return;
 
   // Gather sender (user) details.
   let senderName = msg.from.first_name || '';
@@ -58,8 +62,8 @@ A message mentioning <b>${detectedKeywords.join(', ')}</b> was sent.
 • Message Text: <i>${msg.text}</i>
   `;
 
-  // Send a private message to each admin.
-  for (const adminId of adminIds) {
+  // Send a private message to each owner.
+  for (const adminId of owners) {
     try {
       await bot.sendMessage(adminId, details, { parse_mode: "HTML" });
     } catch (error) {

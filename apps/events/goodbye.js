@@ -36,11 +36,13 @@ export async function onStart({ bot, msg }) {
 
   } catch (error) {
     console.log('Error in goodbye handler:', error);
-    if (global.settings?.admin) {
-      await bot.sendMessage(
-        global.settings.admin,
-        `Error in goodbye handler:\n${error.message}`
-      );
+    const owners = Array.isArray(global.settings?.owner)
+      ? global.settings.owner
+      : Array.isArray(global.settings?.admin)
+        ? global.settings.admin
+        : [];
+    for (const ownerId of owners) {
+      try { await bot.sendMessage(ownerId, `Error in goodbye handler:\n${error.message}`); } catch {}
     }
   }
 }

@@ -8,7 +8,14 @@ import { listen } from '../listen.js';
  * @returns {TelegramBot[]} Array of initialized TelegramBot instances
  */
 export const login = () => {
-  const { timeZone = 'UTC', admin: adminIds = [] } = global.settings;
+  const { timeZone = 'UTC' } = global.settings;
+  // Backward compat: migrate admin -> owner at runtime
+  const ownerIds = Array.isArray(global.settings.owner)
+    ? global.settings.owner
+    : Array.isArray(global.settings.admin)
+      ? global.settings.admin
+      : [];
+  global.settings.owner = ownerIds.map(String);
 
   const startTime = new Date().toLocaleString('en-US', {
     timeZone,
@@ -35,7 +42,7 @@ export const login = () => {
 
   bots.forEach(bot => listen(bot));
 
-  if (adminIds.length) {
+  if (ownerIds.length) {
     const dmText =
       `*🤖  Chaldea Telegram Bot Startup Complete*\n` +
       `• *Instances:* ${bots.length}\n` +
@@ -43,8 +50,8 @@ export const login = () => {
       `• *Status:* All systems operational ✅`;
 
     const notifier = bots[0];
-    adminIds.forEach(adminId => {
-      notifier.sendMessage(adminId, dmText, { parse_mode: 'Markdown' })
+    ownerIds.forEach(ownerId => {
+      notifier.sendMessage(ownerId, dmText, { parse_mode: 'Markdown' })
         .catch(() => { /* silently ignore DM failures */ });
     });
   }

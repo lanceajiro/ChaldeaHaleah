@@ -20,6 +20,29 @@ export class Response {
     return finalOptions;
   }
 
+  /** Resolve a message target (message object | message_id | {chatId,messageId}|{chat_id,message_id}) */
+  _resolveTarget(target) {
+    if (!target) return { chat_id: this.chatId, message_id: undefined };
+    if (typeof target === 'number') return { chat_id: this.chatId, message_id: target };
+    if (typeof target === 'object') {
+      if (typeof target.message_id === 'number') {
+        const targetChatId = target.chat?.id ?? this.chatId;
+        return { chat_id: targetChatId, message_id: target.message_id };
+      }
+      if (typeof target.messageId === 'number') {
+        const targetChatId = target.chatId ?? this.chatId;
+        return { chat_id: targetChatId, message_id: target.messageId };
+      }
+      if (typeof target.chat_id !== 'undefined' && typeof target.message_id !== 'undefined') {
+        return { chat_id: target.chat_id, message_id: target.message_id };
+      }
+      if (typeof target.chatId !== 'undefined' && typeof target.messageId !== 'undefined') {
+        return { chat_id: target.chatId, message_id: target.messageId };
+      }
+    }
+    return { chat_id: this.chatId, message_id: undefined };
+  }
+
   /** Send a text message */
   reply(text, options = {}) {
     const finalOptions = this._getOptions(options);
@@ -95,6 +118,47 @@ export class Response {
   dice(options = {}) {
     const finalOptions = this._getOptions(options);
     return this.bot.sendDice(this.chatId, finalOptions);
+  }
+
+  /** Edit an existing message's text */
+  editText(target, text, options = {}) {
+    const ids = this._resolveTarget(target);
+    const finalOptions = { ...options, chat_id: ids.chat_id, message_id: ids.message_id };
+    return this.bot.editMessageText(text, finalOptions);
+  }
+
+  /** Edit an existing message's caption */
+  editCaption(target, caption, options = {}) {
+    const ids = this._resolveTarget(target);
+    const finalOptions = { ...options, chat_id: ids.chat_id, message_id: ids.message_id };
+    return this.bot.editMessageCaption(caption, finalOptions);
+  }
+
+  /** Edit an existing message's media */
+  editMedia(target, media, options = {}) {
+    const ids = this._resolveTarget(target);
+    const finalOptions = { ...options, chat_id: ids.chat_id, message_id: ids.message_id };
+    return this.bot.editMessageMedia(media, finalOptions);
+  }
+
+  /** Edit an existing message's inline keyboard (reply markup) */
+  editMarkup(target, replyMarkup) {
+    const ids = this._resolveTarget(target);
+    return this.bot.editMessageReplyMarkup(replyMarkup, {
+      chat_id: ids.chat_id,
+      message_id: ids.message_id,
+    });
+  }
+
+  /** Delete a message */
+  delete(target) {
+    const ids = this._resolveTarget(target);
+    return this.bot.deleteMessage(ids.chat_id, ids.message_id);
+  }
+
+  /** Send a chat action (typing, upload_photo, etc.) */
+  action(action = 'typing') {
+    return this.bot.sendChatAction(this.chatId, action);
   }
 
   /** Notify all configured bot owners */
