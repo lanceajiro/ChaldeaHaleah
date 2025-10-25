@@ -7,7 +7,7 @@ export async function command({ bot, response, msg, chatId, args }) {
   const dateNow = Date.now();
   const time = moment.tz(global.settings.timeZone).format("HH:mm:ss DD/MM/YYYY");
 
-  const { owner = [], admin = [], symbols, devMode, prefix } = global.settings;
+  const { owner = [], symbols, devMode, prefix } = global.settings;
   const { commands, cooldowns } = global.chaldea;
   const { from, chat } = msg;
   const senderID = String(from.id);
@@ -101,7 +101,7 @@ export async function command({ bot, response, msg, chatId, args }) {
     return response.reply(usageText, { parse_mode: "Markdown" });
   };
 
-  const ownersList = Array.isArray(owner) && owner.length ? owner : admin;
+  const ownersList = Array.isArray(owner) && owner.length ? owner : owner;
   const isOwner = ownersList.map(String).includes(senderID);
   const isVIP = global.vip.uid.includes(senderID);
 
@@ -121,7 +121,7 @@ export async function command({ bot, response, msg, chatId, args }) {
     }
   }
 
-  const requiresOwner = command.meta.type === "owner" || command.meta.type === "admin";
+  const requiresOwner = command.meta.type === "owner";
   if (!isOwner) {
     if (requiresOwner) {
       return response.reply(`Only bot owners can use the "${command.meta.name}" command.`);

@@ -3,17 +3,17 @@ import { listen } from '../listen.js';
 
 /**
  * Initializes Telegram bots based on tokens defined in setup/states.json,
- * and DMs the configured admins upon successful startup.
+ * and DMs the configured owners upon successful startup.
  *
  * @returns {TelegramBot[]} Array of initialized TelegramBot instances
  */
 export const login = () => {
   const { timeZone = 'UTC' } = global.settings;
-  // Backward compat: migrate admin -> owner at runtime
+  // Backward compat: migrate owner -> owner at runtime
   const ownerIds = Array.isArray(global.settings.owner)
     ? global.settings.owner
-    : Array.isArray(global.settings.admin)
-      ? global.settings.admin
+    : Array.isArray(global.settings.owner)
+      ? global.settings.owner
       : [];
   global.settings.owner = ownerIds.map(String);
 

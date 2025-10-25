@@ -13,105 +13,66 @@ export const meta = {
   category: "anime"
 };
 
-async function fetchAnimeme() {
-  const apiUrl = "https://meme-api.com/gimme/animemes";
-  const response = await axios.get(apiUrl);
-  return response.data;
-}
+const fetchAnimeme = async () => {
+  const { data } = await axios.get("https://meme-api.com/gimme/animemes");
+  return data || null;
+};
+
+const keyboard = (msgId) => ({
+  inline_keyboard: [
+    [
+      {
+        text: "🔁",
+        callback_data: JSON.stringify({
+          command: "animeme",
+          gameMessageId: msgId,
+          args: ["refresh"]
+        })
+      }
+    ]
+  ]
+});
 
 export async function onStart({ bot, msg, chatId, response }) {
   try {
     const meme = await fetchAnimeme();
-    // Build inline keyboard with a refresh button (placeholder for message id)
-    const inlineKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "animeme",
-            gameMessageId: null,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
+    if (!meme) return response.reply("An error occurred while fetching the anime meme.");
 
-    let sentMessage;
-    try {
-      sentMessage = await response.photo(meme.url, {
-        caption: meme.title,
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
-    } catch (err) {
-      console.error("Error sending photo: " + err);
-      return response.reply("Error sending meme.");
-    }
-
-    // Update inline keyboard with actual message id
-    const updatedKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "animeme",
-            gameMessageId: sentMessage.message_id,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
+    // send photo with placeholder keyboard, then update keyboard with actual message id
+    const sent = await response.photo(meme.url, {
+      caption: meme.title,
+      reply_markup: keyboard(null)
+    });
 
     try {
-      await response.editMarkup(sentMessage, { inline_keyboard: updatedKeyboard });
+      await response.editMarkup(sent, keyboard(sent.message_id));
     } catch (err) {
-      console.error("Failed to update inline keyboard: " + err.message);
+      console.error("Failed to update inline keyboard:", err?.message || err);
     }
-  } catch (error) {
-    console.error("Error fetching anime meme: " + error);
+  } catch (err) {
+    console.error("Error fetching anime meme:", err);
     return response.reply("An error occurred while fetching the anime meme.");
   }
 }
 
-async function onCallback({ bot, callbackQuery, payload, response }) {
+export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
-    if (payload.command !== "animeme") return;
-    if (!payload.gameMessageId || callbackQuery.message.message_id !== payload.gameMessageId) return;
+    if (payload?.command !== "animeme") return;
+    const msg = callbackQuery.message;
+    if (!payload.gameMessageId || msg.message_id !== payload.gameMessageId) return;
 
     const meme = await fetchAnimeme();
-    if (!meme) {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: "Error fetching meme." });
-      return;
-    }
+    if (!meme) return void (await bot.answerCallbackQuery(callbackQuery.id, { text: "Error fetching meme." }));
 
-    // Build updated inline keyboard retaining the refresh button
-    const updatedKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "animeme",
-            gameMessageId: payload.gameMessageId,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
-
-    await response.editMedia({ chatId: callbackQuery.message.chat.id, messageId: payload.gameMessageId }, {
-      type: "photo",
-      media: meme.url,
-      caption: meme.title
-    }, { reply_markup: { inline_keyboard: updatedKeyboard } });
+    await response.editMedia(
+      { chatId: msg.chat.id, messageId: payload.gameMessageId },
+      { type: "photo", media: meme.url, caption: meme.title },
+      { reply_markup: keyboard(payload.gameMessageId) }
+    );
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {
-    console.error("Error in animeme callback: " + err.message);
-    try {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: "An error occurred. Please try again." });
-    } catch (innerErr) {
-      console.error("Failed to answer callback query: " + innerErr.message);
-    }
+    console.error("Error in animeme callback:", err?.message || err);
+    try { await bot.answerCallbackQuery(callbackQuery.id, { text: "An error occurred. Please try again." }); } catch (_) {}
   }
 }
-
-export { onCallback };

@@ -13,71 +13,74 @@ export const meta = {
   guide: [""],
 };
 
-// Temporary in-memory map for short callback IDs
+// In-memory cache for quiz data keyed by short quizId
 const quizCache = new Map();
 
-function decodeHtml(str) {
-  return str
+// Minimal HTML entity decoder for common entities returned by OpenTDB
+const decodeHtml = (s = "") =>
+  s
     .replace(/&quot;/g, '"')
     .replace(/&#039;/g, "'")
     .replace(/&amp;/g, "&")
     .replace(/&eacute;/g, "é")
     .replace(/&ldquo;/g, "“")
     .replace(/&rdquo;/g, "”");
-}
 
-export async function onStart({ bot, msg, response }) {
-  const loadingMsg = await response.reply("🧠 *Fetching a random quiz question...*", {
-    parse_mode: "Markdown",
+// Helper: shuffle array (Fisher–Yates)
+const shuffle = (arr) => {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
+// Fetch a single multiple-choice question from OpenTDB
+const fetchQuiz = async () => {
+  const res = await axios.get("https://opentdb.com/api.php?amount=1&type=multiple", {
+    headers: { Accept: "application/json" },
   });
+  return res.data?.results?.[0] ?? null;
+};
+
+export async function onStart({ response }) {
+  const loading = await response.reply("🧠 *Fetching a random quiz question...*", { parse_mode: "Markdown" });
 
   try {
-    const res = await axios.get("https://opentdb.com/api.php?amount=1&type=multiple", {
-      headers: { Accept: "application/json" },
-    });
-
-    const quiz = res.data?.results?.[0];
-    if (!quiz) {
-      await response.editText(loadingMsg, "⚠️ Could not retrieve a quiz question from the API.", { parse_mode: "Markdown" });
-      return;
-    }
+    const quiz = await fetchQuiz();
+    if (!quiz) throw new Error("No quiz returned");
 
     const question = decodeHtml(quiz.question);
-    const correctAnswer = decodeHtml(quiz.correct_answer);
-    const options = [...quiz.incorrect_answers.map(decodeHtml), correctAnswer].sort(
-      () => Math.random() - 0.5
-    );
+    const correct = decodeHtml(quiz.correct_answer);
+    const options = shuffle([...quiz.incorrect_answers.map(decodeHtml), correct]);
 
-    // Generate a short random ID
+    // store correct answer and options by index
     const quizId = Math.random().toString(36).slice(2, 10);
-    quizCache.set(quizId, { correct: correctAnswer });
+    quizCache.set(quizId, { correct, options });
 
-    // Inline keyboard buttons with short data
-    const inlineKeyboard = options.map((opt) => [
-      {
-        text: opt,
-        callback_data: `quiz:${quizId}:${Buffer.from(opt).toString("base64").slice(0, 32)}`,
-      },
+    // build keyboard using option indices (safe, short callback_data)
+    const inline_keyboard = options.map((opt, i) => [
+      { text: opt, callback_data: `quiz:${quizId}:${i}` },
     ]);
 
     const text = `🎯 *Quiz Time!*\n\n❓ *Question:* ${question}\n\nSelect the correct answer below:`;
 
-    await response.editText(loadingMsg, text, { parse_mode: "Markdown", reply_markup: { inline_keyboard: inlineKeyboard } });
-  } catch (error) {
-    await response.editText(loadingMsg, `⚠️ Failed to fetch quiz: ${error.message}`, { parse_mode: "Markdown" });
+    await response.editText(loading, text, { parse_mode: "Markdown", reply_markup: { inline_keyboard } });
+  } catch (err) {
+    await response.editText(loading, `⚠️ Failed to fetch quiz: ${err.message}`, { parse_mode: "Markdown" });
   }
 }
 
-export async function onCallback({ bot, chatId, messageId, payload, callbackQuery, response }) {
+export async function onCallback({ bot, callbackQuery, response }) {
   try {
-    const parts = callbackQuery.data.split(":");
-    if (parts.length < 3) {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: "Invalid data format." });
+    const data = (callbackQuery.data || "").split(":");
+    if (data.length !== 3 || data[0] !== "quiz") {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "Invalid quiz data." });
       return;
     }
 
-    const quizId = parts[1];
-    const chosen = Buffer.from(parts[2], "base64").toString("utf8");
+    const [, quizId, idxStr] = data;
+    const idx = parseInt(idxStr, 10);
     const quizData = quizCache.get(quizId);
 
     if (!quizData) {
@@ -85,27 +88,34 @@ export async function onCallback({ bot, chatId, messageId, payload, callbackQuer
       return;
     }
 
-    const { correct } = quizData;
-    const isCorrect = chosen === correct;
+    const chosen = quizData.options[idx];
+    const isCorrect = chosen === quizData.correct;
+
     const emoji = isCorrect ? "✅" : "❌";
     const feedback = isCorrect
-      ? `🎉 *Correct!* The answer is *${correct}*`
-      : `😢 *Wrong!* You chose *${chosen}*\n\n✅ The correct answer was *${correct}*`;
+      ? `🎉 *Correct!* The answer is *${quizData.correct}*`
+      : `😢 *Wrong!* You chose *${chosen}*\n\n✅ The correct answer was *${quizData.correct}*`;
 
+    // derive chatId/messageId from callbackQuery for robustness
+    const chatId = callbackQuery.message.chat.id;
+    const messageId = callbackQuery.message.message_id;
+
+    // replace message with feedback and remove buttons
     await response.editText({ chatId, messageId }, `${emoji} ${feedback}`, { parse_mode: "Markdown" });
 
-    await bot.answerCallbackQuery(callbackQuery.id, {
-      text: isCorrect ? "Correct!" : "Wrong!",
-      show_alert: false,
-    });
+    await bot.answerCallbackQuery(callbackQuery.id, { text: isCorrect ? "Correct!" : "Wrong!" });
 
-    // Clean up old quiz data
+    // cleanup
     quizCache.delete(quizId);
   } catch (err) {
     console.error("Error in quiz callback:", err);
-    await bot.answerCallbackQuery(callbackQuery.id, {
-      text: "An error occurred while processing your answer.",
-      show_alert: true,
-    });
+    try {
+      await bot.answerCallbackQuery(callbackQuery.id, {
+        text: "An error occurred while processing your answer.",
+        show_alert: true,
+      });
+    } catch (e) {
+      console.error("Failed to answer callback query:", e?.message || e);
+    }
   }
 }

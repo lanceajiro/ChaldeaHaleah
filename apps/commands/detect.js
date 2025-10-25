@@ -4,7 +4,7 @@ export const meta = {
   aliases: [],
   version: "0.0.1",
   author: "Lance Cochangco",
-  description: "Detects admin name mentions and privately notifies them with details.",
+  description: "Detects owner name mentions and privately notifies them with details.",
   guide: ["Detects keywords in messages and alerts owners."],
   prefix: "both",
   cooldown: 0,
@@ -17,33 +17,23 @@ export async function onStart({ bot, msg, response }) {
 }
 
 export async function onWord({ bot, msg, response }) {
-  // Skip if no message text
   if (!msg?.text) return;
 
-  // Detect case-insensitive whole-word matches
   const detectedKeywords = meta.keyword.filter(keyword =>
     new RegExp(`\\b${keyword}\\b`, 'i').test(msg.text)
   );
   if (!detectedKeywords.length) return;
 
-  // Get owners from global settings (fallback to admin)
-  const owners = Array.isArray(global.settings?.owner)
-    ? global.settings.owner
-    : Array.isArray(global.settings?.admin)
-      ? global.settings.admin
-      : [];
+  const owners = Array.isArray(global.settings?.owner) ? global.settings.owner : [];
   if (!owners.length) return;
 
-  // Build sender details
   const senderName = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ').trim() || 'Unknown';
   const senderUsername = msg.from?.username ? ` (@${msg.from.username})` : '';
   const senderId = msg.from?.id ?? 'Unknown';
 
-  // Build chat details
   const chatTitle = msg.chat?.title || 'Private Chat';
   const chatId = msg.chat?.id ?? 'Unknown';
 
-  // Construct alert message
   const details = `
 <b>Owner Alert</b>
 Mention of <b>${detectedKeywords.join(', ')}</b> detected.
@@ -62,7 +52,6 @@ Mention of <b>${detectedKeywords.join(', ')}</b> detected.
   `;
 
   try {
-    // Notify each owner
     await response.forOwner(details, { parse_mode: "HTML" });
   } catch (error) {
     console.error(`Failed to notify owners: ${error.message}`);

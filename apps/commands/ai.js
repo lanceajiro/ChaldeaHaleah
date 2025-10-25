@@ -14,41 +14,33 @@ export const meta = {
 };
 
 export async function onStart({ bot, msg, args, response, usages }) {
-  if (!args.length && !msg.reply_to_message) {
-    return await usages();
-  }
+  if (!args.length && !msg.reply_to_message) return usages();
 
   const text = args.join(' ');
-  let imageUrl = null;
+  let imageUrl = '';
 
-  // Get image URL if user replies to an image
   if (msg.reply_to_message?.photo) {
-    const fileId = msg.reply_to_message.photo.pop().file_id;
+    const fileId = msg.reply_to_message.photo.slice(-1)[0].file_id;
     const file = await bot.getFile(fileId);
     imageUrl = `https://api.telegram.org/file/bot${bot.token}/${file.file_path}`;
   }
 
-  const loadingMsg = await response.reply('🤖 *Thinking...*', { parse_mode: 'Markdown' });
+  const loading = await response.reply('🤖 *Thinking...*', { parse_mode: 'Markdown' });
 
   try {
-    const res = await axios.get(`${global.api.nekolabs}/ai/gpt/5`, {
+    const { data } = await axios.get(`${global.api.nekolabs}/ai/gpt/5`, {
       params: {
-        text: text || 'Describe this image.',
+        text: text || (imageUrl ? 'Describe this image.' : ''),
         systemPrompt: 'You are a helpful assistant.',
-        imageUrl: imageUrl || '',
+        imageUrl,
         sessionId: 'neko'
       }
     });
 
-    const data = res.data;
+    if (!data?.result) return response.editText(loading, '⚠️ No response from AI.', { parse_mode: 'Markdown' });
 
-    if (!data || !data.result) return await response.editText(loadingMsg, '⚠️ No response from AI.', { parse_mode: 'Markdown' });
-
-    const result = data.result;
-
-    await response.editText(loadingMsg, `💬 *AI Response:*\n\n${result}`, { parse_mode: 'Markdown' });
-
-  } catch (error) {
-    await response.editText(loadingMsg, `⚠️ Error: ${error.message}`, { parse_mode: 'Markdown' });
+    await response.editText(loading, `💬 *AI Response:*\n\n${data.result}`, { parse_mode: 'Markdown' });
+  } catch (err) {
+    await response.editText(loading, `⚠️ Error: ${err.message}`, { parse_mode: 'Markdown' });
   }
 }

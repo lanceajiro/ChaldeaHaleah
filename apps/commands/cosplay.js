@@ -13,132 +13,59 @@ export const meta = {
   category: "anime"
 };
 
+const owner = 'ajirodesu';
+const repo = 'cosplay';
+const branch = 'main';
+const repoUrl = `https://github.com/${owner}/${repo}/tree/${branch}/`;
+
 async function fetchCosplayVideo() {
-  try {
-    // Define GitHub repository details
-    const owner = 'ajirodesu';
-    const repo = 'cosplay';
-    const branch = 'main';
-    const repoUrl = `https://github.com/${owner}/${repo}/tree/${branch}/`;
-    const response = await axios.get(repoUrl);
-    const html = response.data;
-
-    // Use regex to extract .mp4 filenames from the HTML
-    const videoFileRegex = /href="\/ajirodesu\/cosplay\/blob\/main\/([^"]+\.mp4)"/g;
-    const videoFiles = [];
-    let match;
-    while ((match = videoFileRegex.exec(html)) !== null) {
-      videoFiles.push(match[1]);
-    }
-
-    if (videoFiles.length === 0) return null;
-
-    // Select a random video and construct the raw URL
-    const randomVideo = videoFiles[Math.floor(Math.random() * videoFiles.length)];
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${randomVideo}`;
-  } catch (error) {
-    throw error;
-  }
+  const { data: html } = await axios.get(repoUrl);
+  const re = /href="\/ajirodesu\/cosplay\/blob\/main\/([^"]+\.mp4)"/g;
+  const files = [];
+  let m;
+  while ((m = re.exec(html)) !== null) files.push(m[1]);
+  if (!files.length) return null;
+  const file = files[Math.floor(Math.random() * files.length)];
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file}`;
 }
+
+const keyboard = (msgId) => ({ inline_keyboard: [[{ text: "🔁", callback_data: JSON.stringify({ command: "cosplay", gameMessageId: msgId, args: ["refresh"] }) }]] });
 
 export async function onStart({ msg, bot, chatId, log, response }) {
   try {
     const videoUrl = await fetchCosplayVideo();
     if (!videoUrl) return response.reply("No cosplay videos found in the repository.");
 
-    // Build inline keyboard with a refresh button (placeholder for message id)
-    const inlineKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "cosplay",
-            gameMessageId: null,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
+    const sent = await response.video(videoUrl, {
+      caption: "Here's a random cosplay video!",
+      reply_markup: keyboard(null)
+    });
 
-    let sentMessage;
-    try {
-      // Send the video with inline keyboard attached
-      sentMessage = await response.video(videoUrl, {
-        caption: "Here's a random cosplay video!",
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
-    } catch (err) {
-      console.error("Error sending video: " + err);
-      return response.reply("Error sending video.");
-    }
-
-    // Update the inline keyboard with the actual message id for callback validation
-    const updatedKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "cosplay",
-            gameMessageId: sentMessage.message_id,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
-
-    try {
-      await response.editMarkup(sentMessage, { inline_keyboard: updatedKeyboard });
-    } catch (err) {
-      console.error("Failed to update inline keyboard: " + err.message);
-    }
-  } catch (error) {
-    console.error("Error fetching random video: " + error);
-    return response.reply(`An error occurred while fetching a cosplay video: ${error.message}`);
+    try { await response.editMarkup(sent, keyboard(sent.message_id)); } catch (e) { console.error("editMarkup error:", e?.message || e); }
+  } catch (err) {
+    console.error("Error fetching/sending cosplay video:", err?.message || err);
+    return response.reply(`An error occurred while fetching a cosplay video: ${err?.message || err}`);
   }
 }
 
-async function onCallback({ bot, callbackQuery, payload, response }) {
+export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
-    // Validate that the callback is for the cosplay command and the message id matches.
-    if (payload.command !== "cosplay") return;
-    if (!payload.gameMessageId || callbackQuery.message.message_id !== payload.gameMessageId) return;
+    if (payload?.command !== "cosplay") return;
+    const msg = callbackQuery.message;
+    if (!payload.gameMessageId || msg.message_id !== payload.gameMessageId) return;
 
     const videoUrl = await fetchCosplayVideo();
-    if (!videoUrl) {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: "No cosplay videos found." });
-      return;
-    }
+    if (!videoUrl) return void (await bot.answerCallbackQuery(callbackQuery.id, { text: "No cosplay videos found." }));
 
-    // Build the updated inline keyboard (retaining the refresh button)
-    const updatedKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "cosplay",
-            gameMessageId: payload.gameMessageId,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
-
-    // Edit the message media to update the video and caption
-    await response.editMedia({ chatId: callbackQuery.message.chat.id, messageId: payload.gameMessageId }, {
-      type: "video",
-      media: videoUrl,
-      caption: "Here's a random cosplay video!"
-    }, { reply_markup: { inline_keyboard: updatedKeyboard } });
+    await response.editMedia(
+      { chatId: msg.chat.id, messageId: payload.gameMessageId },
+      { type: "video", media: videoUrl, caption: "Here's a random cosplay video!" },
+      { reply_markup: keyboard(payload.gameMessageId) }
+    );
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {
-    console.error("Error in cosplay callback: " + err.message);
-    try {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: "An error occurred. Please try again." });
-    } catch (innerErr) {
-      console.error("Failed to answer callback query: " + innerErr.message);
-    }
+    console.error("Error in cosplay callback:", err?.message || err);
+    try { await bot.answerCallbackQuery(callbackQuery.id, { text: "An error occurred. Please try again." }); } catch (_) {}
   }
 }
-
-export { onCallback };

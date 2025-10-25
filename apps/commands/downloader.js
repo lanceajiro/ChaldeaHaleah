@@ -1,6 +1,6 @@
 import axios from "axios";
 import fs from "fs";
-import path, { dirname } from "path";
+import path from "path";
 import { fileURLToPath } from "url";
 
 export const meta = {
@@ -16,7 +16,7 @@ export const meta = {
     "https://twitter.com/",
     "https://vm.tiktok.com",
     "https://fb.watch",
-  ], // URLs to detect
+  ],
   aliases: [],
   version: "1.0.1",
   author: "Dipto",
@@ -27,83 +27,46 @@ export const meta = {
   category: "downloader",
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const tempDir = path.join(__dirname, "..", "temp");
+fs.mkdirSync(tempDir, { recursive: true });
 
-export async function onStart({ bot, msg, chatId, response }) {
+export async function onStart({ response }) {
   await response.reply("Send a video link, and I'll download it for you!", { parse_mode: "HTML" });
 }
 
-export async function onWord({ bot, msg, chatId, args, response }) {
-  // prefer msg.text or msg.caption (if message is a captioned media)
-  const messageText = (msg.text || msg.caption || "").trim();
+export async function onWord({ msg, chatId, response }) {
+  const text = (msg.text || msg.caption || "").trim();
+  const found = meta.keyword.find((k) => text.includes(k));
+  if (!found) return;
 
-  // find a supported URL anywhere in the message
-  const detectedUrl = meta.keyword.find((url) => messageText.includes(url));
-  if (!detectedUrl) return;
-
-  const messageId = msg.message_id;
-  let waitMessageId = null;
+  let waitId = null;
+  const wait = await response.reply("⏳ Processing your request...", { noReply: true });
+  waitId = wait?.message_id;
 
   try {
-    // send processing message (we'll delete it later)
-    const wait = await response.reply("⏳ Processing your request...", { noReply: true });
-    waitMessageId = wait.message_id;
-
-    const tempDir = path.join(__dirname, "..", "..", "temp");
-    // ensure temp dir exists
-    fs.mkdirSync(tempDir, { recursive: true });
-
-    const videoPath = path.join(tempDir, `downloaded_video_${Date.now()}.mp4`);
-
-    // call downloader API (make sure global.api.dipto is defined in your environment)
-    const apiUrl = `${global.api.dipto}/dipto/alldl?url=${encodeURIComponent(messageText)}`;
-    const apiRes = await axios.get(apiUrl).catch((e) => {
-      throw new Error("Failed to contact download API: " + (e.message || e));
-    });
-
-    const apiData = apiRes?.data;
-    if (!apiData || !apiData.result) {
-      throw new Error("Download API did not return a valid result URL.");
-    }
+    const apiUrl = `${global.api.dipto}/alldl?url=${encodeURIComponent(text)}`;
+    const { data: apiData } = await axios.get(apiUrl).catch((e) => { throw new Error("Download API error: " + (e.message || e)); });
+    if (!apiData?.result) throw new Error("Download API returned no result.");
 
     const downloadUrl = apiData.result;
+    const { data: videoBuf } = await axios.get(downloadUrl, { responseType: "arraybuffer" });
 
-    // fetch the actual video as arraybuffer
-    const videoResp = await axios.get(downloadUrl, { responseType: "arraybuffer" });
+    const filePath = path.join(tempDir, `downloaded_${Date.now()}.mp4`);
+    fs.writeFileSync(filePath, Buffer.from(videoBuf));
 
-    // write binary file
-    fs.writeFileSync(videoPath, Buffer.from(videoResp.data));
+    try { if (waitId) await response.delete({ chatId, messageId: waitId }); } catch (_) {}
 
-    // delete processing message (best-effort)
-    try {
-      if (waitMessageId) await response.delete({ chatId, messageId: waitMessageId });
-    } catch (e) {
-      // ignore delete errors
-    }
-
-    // send the video file (using a stream/readable path). Pass options in one object.
-    await response.video(fs.createReadStream(videoPath), {
+    await response.video(fs.createReadStream(filePath), {
       caption: `${apiData.cp || ""} ✅`,
       filename: "video.mp4",
       contentType: "video/mp4",
       noReply: true,
     });
 
-    // cleanup
-    try {
-      fs.unlinkSync(videoPath);
-    } catch (e) {
-      // ignore cleanup errors
-    }
-  } catch (error) {
-    // try to remove processing message if it exists
-    try {
-      if (waitMessageId) await response.delete({ chatId, messageId: waitMessageId });
-    } catch (e) {
-      // ignore
-    }
-
-    await response.reply(`❎ Error: ${error.message || String(error)}`);
+    try { fs.unlinkSync(filePath); } catch (_) {}
+  } catch (err) {
+    try { if (waitId) await response.delete({ chatId, messageId: waitId }); } catch (_) {}
+    await response.reply(`❎ Error: ${err?.message || String(err)}`);
   }
 }

@@ -13,101 +13,54 @@ export const meta = {
   guide: ['']
 };
 
-// Function to fetch advice
-async function fetchAdvice() {
-  const res = await axios.get('https://api.adviceslip.com/advice', {
-    headers: { Accept: 'application/json' }
-  });
-  return res.data?.slip?.advice || null;
-}
+const fetchAdvice = async () => {
+  const r = await axios.get('https://api.adviceslip.com/advice', { headers: { Accept: 'application/json' } });
+  return r.data?.slip?.advice ?? null;
+};
+
+const keyboard = (msgId) => ({
+  inline_keyboard: [
+    [
+      {
+        text: '🔁',
+        callback_data: JSON.stringify({ command: 'advice', messageId: msgId, args: ['refresh'] })
+      }
+    ]
+  ]
+});
 
 export async function onStart({ bot, msg, chatId, response }) {
-  const loadingMsg = await response.reply('💬 *Fetching a piece of advice...*', { parse_mode: 'Markdown' });
-
+  const loading = await response.reply('💬 *Fetching a piece of advice...*', { parse_mode: 'Markdown' });
   try {
     const advice = await fetchAdvice();
-    if (!advice) {
-      await response.editText(loadingMsg, '⚠️ Could not retrieve advice from the API.', { parse_mode: 'Markdown' });
-      return;
-    }
+    if (!advice) return response.editText(loading, '⚠️ Could not retrieve advice from the API.', { parse_mode: 'Markdown' });
 
-    // Inline keyboard with refresh button
-    const inlineKeyboard = [
-      [
-        {
-          text: '🔁',
-          callback_data: JSON.stringify({
-            command: 'advice',
-            messageId: null,
-            args: ['refresh']
-          })
-        }
-      ]
-    ];
-
-    // Edit message to show advice and attach button
-    await response.editText(loadingMsg, `💡 *Random Advice:*\n\n_${advice}_`, {
+    await response.editText(loading, `💡 *Random Advice:*\n\n_${advice}_`, {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: inlineKeyboard }
+      reply_markup: keyboard(loading.message_id)
     });
-
-    // Update callback data with the actual message id
-    const updatedKeyboard = [
-      [
-        {
-          text: '🔁',
-          callback_data: JSON.stringify({
-            command: 'advice',
-            messageId: loadingMsg.message_id,
-            args: ['refresh']
-          })
-        }
-      ]
-    ];
-
-    await response.editMarkup(loadingMsg, { inline_keyboard: updatedKeyboard });
-  } catch (error) {
-    await response.editText(loadingMsg, `⚠️ Failed to fetch advice: ${error.message}`, { parse_mode: 'Markdown' });
+  } catch (e) {
+    await response.editText(loading, `⚠️ Failed to fetch advice: ${e.message}`, { parse_mode: 'Markdown' });
   }
 }
 
-// Callback handler for refresh button
 export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
-    if (payload.command !== 'advice') return;
-    if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
+    if (payload?.command !== 'advice') return;
+    const msg = callbackQuery.message;
+    if (!payload.messageId || msg.message_id !== payload.messageId) return;
 
     const advice = await fetchAdvice();
-    if (!advice) {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: 'Error fetching advice.' });
-      return;
-    }
+    if (!advice) return bot.answerCallbackQuery(callbackQuery.id, { text: 'Error fetching advice.' });
 
-    const updatedKeyboard = [
-      [
-        {
-          text: '🔁',
-          callback_data: JSON.stringify({
-            command: 'advice',
-            messageId: payload.messageId,
-            args: ['refresh']
-          })
-        }
-      ]
-    ];
-
-    await response.editText({ chatId: callbackQuery.message.chat.id, messageId: payload.messageId }, `💡 *Random Advice:*\n\n_${advice}_`, {
+    await response.editText({ chatId: msg.chat.id, messageId: payload.messageId }, `💡 *Random Advice:*\n\n_${advice}_`, {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: updatedKeyboard }
+      reply_markup: keyboard(payload.messageId)
     });
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {
     console.error('Error in advice callback:', err);
-    try {
-      await bot.answerCallbackQuery(callbackQuery.id, { text: 'An error occurred. Please try again.' });
-    } catch (innerErr) {
-      console.error('Failed to answer callback query:', innerErr.message);
-    }
+    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'An error occurred. Please try again.' }); } catch (_) {}
   }
 }

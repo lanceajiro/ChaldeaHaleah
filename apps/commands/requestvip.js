@@ -36,14 +36,14 @@ export async function onStart({ bot, msg, response, args, usages }) {
       `Message: ${text}`;
 
     // Check if there are any admins
-    const admins = Array.isArray(global.settings.admin) ? global.settings.admin : [];
+    const admins = Array.isArray(global.settings.owner) ? global.settings.owner : [];
     if (admins.length === 0) {
       await response.reply("❌ There are no operators to receive your request.");
       return;
     }
 
     // Send to all admins using response.forAdmin
-    await response.forAdmin(requestMessage);
+    await response.forOwner(requestMessage);
 
     // Confirm back to the user
     await response.reply("✅ Your request has been sent to the bot operators.");

@@ -43,6 +43,11 @@ export class R {
     return { chat_id: this.chatId, message_id: undefined };
   }
 
+  /** Send a text message without automatic reply */
+  send(text, options = {}) {
+    return this.bot.sendMessage(this.chatId, text, options);
+  }
+
   /** Send a text message */
   reply(text, options = {}) {
     const finalOptions = this._getOptions(options);
@@ -175,4 +180,4 @@ export class R {
 }
 
 // Backward-compat export for legacy imports
-export const Message = Response;
+export const Message = R;

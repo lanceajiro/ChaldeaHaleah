@@ -23,7 +23,7 @@ const COMMANDS_PER_PAGE = 10;
 async function getRandomWaifuUrl() {
   try {
     const res = await axios.get("https://api.waifu.pics/sfw/waifu", { timeout: 8000 });
-    if (res && res.data && res.data.url) return res.data.url;
+    if (res?.data?.url) return res.data.url;
   } catch (e) {
     // ignore and fallback
   }
@@ -34,7 +34,7 @@ export async function onStart({ bot, chatId, msg, response }) {
   try {
     const userId = msg.from.id;
     const { commands } = global.chaldea;
-    const { owner = [], admin = [], prefix: globalPrefix, symbols } = global.settings;
+    const { owner = [], prefix: globalPrefix, symbols } = global.settings;
     const vipUsers = global.vip.uid.includes(userId);
     const senderID = String(userId);
     const chatType = msg.chat.type;
@@ -63,8 +63,8 @@ export async function onStart({ bot, chatId, msg, response }) {
 
     // Get effective prefix and permission flags.
     const effectivePrefix = chatType === "private" ? globalPrefix : globalPrefix;
-    const ownersList = Array.isArray(owner) && owner.length ? owner : admin;
-    const isBotAdmin = ownersList.map(String).includes(senderID);
+    const ownersList = Array.isArray(owner) ? owner : [];
+    const isBotOwner = ownersList.map(String).includes(senderID);
     const isGroupAdmin = await checkGroupAdmin(bot, chatId, senderID, chatType);
 
     // Create a unique session ID early.
@@ -74,7 +74,7 @@ export async function onStart({ bot, chatId, msg, response }) {
     const { helpMessage, replyMarkup } = generateHelpMessage(
       commands,
       senderID,
-      isBotAdmin,
+      isBotOwner,
       isGroupAdmin,
       pageNumber,
       cleanArg,
@@ -92,10 +92,7 @@ export async function onStart({ bot, chatId, msg, response }) {
       const sentPhoto = await response.photo(waifuUrl, {
         caption: helpMessage,
         parse_mode: "Markdown",
-        reply_markup:
-          replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length
-            ? replyMarkup
-            : undefined,
+        reply_markup: replyMarkup?.inline_keyboard?.length ? replyMarkup : undefined,
       });
 
       // Store session details.
@@ -110,10 +107,7 @@ export async function onStart({ bot, chatId, msg, response }) {
     } else {
       const sentMsg = await response.reply(helpMessage, {
         parse_mode: "Markdown",
-        reply_markup:
-          replyMarkup && replyMarkup.inline_keyboard && replyMarkup.inline_keyboard.length
-            ? replyMarkup
-            : undefined,
+        reply_markup: replyMarkup?.inline_keyboard?.length ? replyMarkup : undefined,
       });
 
       // Store session details.
@@ -132,7 +126,7 @@ export async function onStart({ bot, chatId, msg, response }) {
 async function onCallback({ bot, callbackQuery }) {
   try {
     // Validate callback data.
-    if (!callbackQuery || !callbackQuery.data) {
+    if (!callbackQuery?.data) {
       await bot.answerCallbackQuery(callbackQuery.id, { text: "Invalid button data." });
       return;
     }
@@ -164,22 +158,22 @@ async function onCallback({ bot, callbackQuery }) {
 
     const newPageNumber = payload.page;
     const { commands } = global.chaldea;
-    const { owner = [], admin = [], prefix: globalPrefix, symbols } = global.settings;
+    const { owner = [], prefix: globalPrefix, symbols } = global.settings;
     const senderID = String(callbackQuery.from.id);
     const vipUsers = global.vip.uid.includes(senderID);
     const chatId = callbackQuery.message.chat.id;
     const chatType = callbackQuery.message.chat.type;
 
     const effectivePrefix = chatType === "private" ? globalPrefix : globalPrefix;
-    const ownersList = Array.isArray(owner) && owner.length ? owner : admin;
-    const isBotAdmin = ownersList.map(String).includes(senderID);
+    const ownersList = Array.isArray(owner) ? owner : [];
+    const isBotOwner = ownersList.map(String).includes(senderID);
     const isGroupAdmin = await checkGroupAdmin(bot, chatId, senderID, chatType);
 
     // Generate new help message and reply markup.
     const { helpMessage, replyMarkup } = generateHelpMessage(
       commands,
       senderID,
-      isBotAdmin,
+      isBotOwner,
       isGroupAdmin,
       newPageNumber,
       null,
@@ -190,7 +184,7 @@ async function onCallback({ bot, callbackQuery }) {
       payload.instanceId // Pass instanceId to keep buttons consistent
     );
 
-    // Define response methods using bot (adjust based on your framework).
+    // Define response methods using bot.
     const response = {
       editMedia: async (message, media, options) => {
         await bot.editMessageMedia(media, {
@@ -266,7 +260,7 @@ async function onCallback({ bot, callbackQuery }) {
 function generateHelpMessage(
   commands,
   senderID,
-  isBotAdmin,
+  isBotOwner,
   isGroupAdmin,
   pageNumber,
   cleanArg,
@@ -276,7 +270,7 @@ function generateHelpMessage(
   chatType,
   instanceId // Add instanceId parameter
 ) {
-  const filteredCommands = getFilteredCommands(commands, senderID, isBotAdmin, isGroupAdmin, vipUsers, chatType);
+  const filteredCommands = getFilteredCommands(commands, senderID, isBotOwner, isGroupAdmin, vipUsers, chatType);
   const totalCommands = filteredCommands.length;
   const totalPages = Math.ceil(totalCommands / COMMANDS_PER_PAGE) || 1;
 
@@ -329,12 +323,12 @@ async function checkGroupAdmin(bot, chatId, senderID, chatType) {
   return false;
 }
 
-function getFilteredCommands(commands, senderID, isBotAdmin, isGroupAdmin, vipUsers, chatType) {
+function getFilteredCommands(commands, senderID, isBotOwner, isGroupAdmin, vipUsers, chatType) {
   return [...commands.values()]
     .filter((cmd) => {
-      if (cmd.meta.category && cmd.meta.category.toLowerCase() === "hidden") return false;
-      if (!isBotAdmin) {
-        if (cmd.meta.type === "admin" || cmd.meta.type === "owner") return false;
+      if (cmd.meta.category?.toLowerCase() === "hidden") return false;
+      if (!isBotOwner) {
+        if (cmd.meta.type === "owner") return false;
         if (cmd.meta.type === "vip" && !vipUsers) return false;
         if (cmd.meta.type === "administrator" && !isGroupAdmin) return false;
         if (cmd.meta.type === "group" && !["group", "supergroup"].includes(chatType)) return false;
@@ -372,7 +366,7 @@ function generateAllCommandsMessage(filteredCommands, prefix, symbols) {
 
 function generateCommandInfo(cmdInfo, prefix) {
   const aliases =
-    cmdInfo.aliases && cmdInfo.aliases.length
+    cmdInfo.aliases?.length
       ? `*Aliases:*\n${cmdInfo.aliases.map((alias) => `\`${alias}\``).join(", ")}`
       : "*Aliases:*\nNone";
 

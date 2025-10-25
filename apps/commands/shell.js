@@ -9,8 +9,8 @@ export const meta = {
   description: 'Execute shell or terminal commands on the server.',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'admin',
-  type: 'admin',
+  category: 'owner',
+  type: 'owner',
   cooldown: 5,
   guide: ['<command> - Run a shell/terminal command on the host server.']
 };

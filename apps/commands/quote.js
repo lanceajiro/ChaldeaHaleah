@@ -13,78 +13,53 @@ export const meta = {
   guide: ['']
 };
 
-// Function to fetch a random quote
+const API = 'https://dummyjson.com/quotes/random';
+
+// helper: build keyboard with refresh button (retains messageId)
+const makeKeyboard = (messageId) => [[
+  {
+    text: '🔁',
+    callback_data: JSON.stringify({ command: 'quote', messageId, args: ['refresh'] })
+  }
+]];
+
 async function fetchQuote() {
-  const res = await axios.get('https://dummyjson.com/quotes/random', {
-    headers: { Accept: 'application/json' }
-  });
-  return res.data || null;
+  const { data } = await axios.get(API, { headers: { Accept: 'application/json' } });
+  return data ?? null;
 }
 
-export async function onStart({ bot, msg, chatId, response }) {
-  const loadingMsg = await response.reply('💭 *Fetching an inspirational quote...*', { parse_mode: 'Markdown' });
+export async function onStart({ response }) {
+  const loading = await response.reply('💭 *Fetching an inspirational quote...*', { parse_mode: 'Markdown' });
 
   try {
     const data = await fetchQuote();
     const quote = data?.quote;
     const author = data?.author;
 
-    if (!quote || !author) {
-      await response.editText(loadingMsg, '⚠️ Could not retrieve a quote from the API.', { parse_mode: 'Markdown' });
-      return;
-    }
+    if (!quote || !author) throw new Error('No quote returned');
 
     const text = `📜 *Quote of the Moment:*\n\n_"${quote}"_\n\n— *${author}*`;
 
-    // Inline keyboard with refresh button
-    const inlineKeyboard = [
-      [
-        {
-          text: '🔁',
-          callback_data: JSON.stringify({
-            command: 'quote',
-            messageId: null,
-            args: ['refresh']
-          })
-        }
-      ]
-    ];
-
-    // Edit message to show quote and add refresh button
-    await response.editText(loadingMsg, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: inlineKeyboard } });
-
-    // Update keyboard with actual message ID
-    const updatedKeyboard = [
-      [
-        {
-          text: '🔁',
-          callback_data: JSON.stringify({
-            command: 'quote',
-            messageId: loadingMsg.message_id,
-            args: ['refresh']
-          })
-        }
-      ]
-    ];
-
-    await response.editMarkup(loadingMsg, { inline_keyboard: updatedKeyboard });
-
-  } catch (error) {
+    // use real message id immediately so button references the correct message
+    await response.editText(loading, text, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: makeKeyboard(loading.message_id) }
+    });
+  } catch (err) {
+    // fallback quote on error
     const fallbackQuote = "Life is what happens when you're busy making other plans.";
     const fallbackAuthor = "John Lennon";
-
     await response.editText(
-      loadingMsg,
+      loading,
       `⚠️ Failed to fetch quote. Here's a fallback:\n\n_"${fallbackQuote}"_\n\n— *${fallbackAuthor}*`,
       { parse_mode: 'Markdown' }
     );
   }
 }
 
-// Callback handler for refresh button
 export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
-    if (payload.command !== 'quote') return;
+    if (payload?.command !== 'quote') return;
     if (!payload.messageId || callbackQuery.message.message_id !== payload.messageId) return;
 
     const data = await fetchQuote();
@@ -98,23 +73,11 @@ export async function onCallback({ bot, callbackQuery, payload, response }) {
 
     const text = `📜 *Quote of the Moment:*\n\n_"${quote}"_\n\n— *${author}*`;
 
-    const updatedKeyboard = [
-      [
-        {
-          text: '🔁',
-          callback_data: JSON.stringify({
-            command: 'quote',
-            messageId: payload.messageId,
-            args: ['refresh']
-          })
-        }
-      ]
-    ];
-
-    await response.editText({ chatId: callbackQuery.message.chat.id, messageId: payload.messageId }, text, {
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: updatedKeyboard }
-    });
+    await response.editText(
+      { chatId: callbackQuery.message.chat.id, messageId: payload.messageId },
+      text,
+      { parse_mode: 'Markdown', reply_markup: { inline_keyboard: makeKeyboard(payload.messageId) } }
+    );
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {
@@ -122,7 +85,7 @@ export async function onCallback({ bot, callbackQuery, payload, response }) {
     try {
       await bot.answerCallbackQuery(callbackQuery.id, { text: 'An error occurred. Please try again.' });
     } catch (innerErr) {
-      console.error('Failed to answer callback query:', innerErr.message);
+      console.error('Failed to answer callback query:', innerErr?.message || innerErr);
     }
   }
 }

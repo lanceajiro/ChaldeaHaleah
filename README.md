@@ -91,7 +91,7 @@ export const meta = {
   author: "Author Name",
   prefix: "both", // true = only with prefix, false = no prefix, "both" = both allowed
   category: "utility",
-  type: "anyone", // anyone, admin, vip, group, private
+  type: "anyone", // anyone, owner, administrator, vip, group, private
   cooldown: 5,
   guide: "Usage guide"
 };

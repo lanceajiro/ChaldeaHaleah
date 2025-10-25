@@ -5,8 +5,7 @@ export const meta = {
   author: "ShawnDesu"
 };
 
-export async function onStart({ bot, msg }) {
-  const chatId = msg.chat.id;
+export async function onStart({ bot, msg, chatId, response }) {
   const newMembers = msg.new_chat_members;
 
   try {
@@ -22,8 +21,7 @@ export async function onStart({ bot, msg }) {
       const chatMember = await bot.getChatMember(chatId, botInfo.id);
 
       if (chatMember.status !== 'administrator') {
-        await bot.sendMessage(
-          chatId,
+        await response.send(
           `🎉 ${botInfo.first_name} has been successfully connected!\n\n` +
           `Thank you for inviting me to ${title}. Before you use this bot, ` +
           `please consider granting me admin privileges.`
@@ -36,8 +34,7 @@ export async function onStart({ bot, msg }) {
       const memberName = `${newMember.first_name}${newMember.last_name ? ' ' + newMember.last_name : ''}`;
       const memberCount = await bot.getChatMemberCount(chatId);
 
-      await bot.sendMessage(
-        chatId,
+      await response.send(
         `Hi ${memberName}, welcome to ${title}!\n` +
         `Please enjoy your time here! 🥳♥\n\n` +
         `You are ${memberCount}th member of this group.`
@@ -46,13 +43,6 @@ export async function onStart({ bot, msg }) {
 
   } catch (error) {
     console.log('Error in welcome handler:', error);
-    const owners = Array.isArray(global.settings?.owner)
-      ? global.settings.owner
-      : Array.isArray(global.settings?.admin)
-        ? global.settings.admin
-        : [];
-    for (const ownerId of owners) {
-      try { await bot.sendMessage(ownerId, `Error in welcome handler:\n${error.message}`); } catch {}
-    }
+    await response.forOwner(`Error in welcome handler:\n${error.message}`);
   }
 }

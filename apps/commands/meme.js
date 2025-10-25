@@ -13,68 +13,49 @@ export const meta = {
   category: "fun"
 };
 
+const API = "https://meme-api.com/gimme/memes";
+
+// builds inline keyboard (preserves original gameMessageId key)
+const makeKeyboard = (messageId) => [[{
+  text: "🔁",
+  callback_data: JSON.stringify({
+    command: "meme",
+    gameMessageId: messageId,
+    args: ["refresh"]
+  })
+}]];
+
 async function fetchMeme() {
-  const apiUrl = "https://meme-api.com/gimme/memes";
-  const response = await axios.get(apiUrl);
-  return response.data;
+  const { data } = await axios.get(API);
+  return data || null;
 }
 
-export async function onStart({ bot, msg, chatId, log, response }) {
+export async function onStart({ response }) {
   try {
     const meme = await fetchMeme();
-    // Build inline keyboard with a refresh button (placeholder for message id)
-    const inlineKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "meme",
-            gameMessageId: null,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
+    if (!meme) throw new Error('No meme returned');
 
-    let sentMessage;
+    // send photo with placeholder keyboard (null messageId)
+    const sent = await response.photo(meme.url, {
+      caption: meme.title || '',
+      reply_markup: { inline_keyboard: makeKeyboard(null) }
+    });
+
+    // update keyboard with real message id
     try {
-      sentMessage = await response.photo(meme.url, {
-        caption: meme.title,
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      await response.editMarkup(sent, { inline_keyboard: makeKeyboard(sent.message_id) });
     } catch (err) {
-      console.error("Error sending photo: " + err);
-      return response.reply("Error sending meme.");
+      console.error('Failed to update inline keyboard:', err?.message || err);
     }
-
-    // Update inline keyboard with actual message id
-    const updatedKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "meme",
-            gameMessageId: sentMessage.message_id,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
-
-    try {
-      await response.editMarkup(sentMessage, { inline_keyboard: updatedKeyboard });
-    } catch (err) {
-      console.error("Failed to update inline keyboard: " + err.message);
-    }
-  } catch (error) {
-    console.error("Error fetching meme: " + error);
+  } catch (err) {
+    console.error('Error fetching/sending meme:', err?.message || err);
     return response.reply("An error occurred while fetching the meme.");
   }
 }
 
-async function onCallback({ bot, callbackQuery, payload, response }) {
+export async function onCallback({ bot, callbackQuery, payload, response }) {
   try {
-    if (payload.command !== "meme") return;
+    if (payload?.command !== "meme") return;
     if (!payload.gameMessageId || callbackQuery.message.message_id !== payload.gameMessageId) return;
 
     const meme = await fetchMeme();
@@ -83,35 +64,20 @@ async function onCallback({ bot, callbackQuery, payload, response }) {
       return;
     }
 
-    // Build updated inline keyboard retaining the refresh button
-    const updatedKeyboard = [
-      [
-        {
-          text: "🔁",
-          callback_data: JSON.stringify({
-            command: "meme",
-            gameMessageId: payload.gameMessageId,
-            args: ["refresh"]
-          }),
-        },
-      ],
-    ];
-
-    await response.editMedia({ chatId: callbackQuery.message.chat.id, messageId: payload.gameMessageId }, {
-      type: "photo",
-      media: meme.url,
-      caption: meme.title
-    }, { reply_markup: { inline_keyboard: updatedKeyboard } });
+    // replace media while keeping the refresh button
+    await response.editMedia(
+      { chatId: callbackQuery.message.chat.id, messageId: payload.gameMessageId },
+      { type: "photo", media: meme.url, caption: meme.title || '' },
+      { reply_markup: { inline_keyboard: makeKeyboard(payload.gameMessageId) } }
+    );
 
     await bot.answerCallbackQuery(callbackQuery.id);
   } catch (err) {
-    console.error("Error in meme callback: " + err.message);
+    console.error('Error in meme callback:', err?.message || err);
     try {
       await bot.answerCallbackQuery(callbackQuery.id, { text: "An error occurred. Please try again." });
-    } catch (innerErr) {
-      console.error("Failed to answer callback query: " + innerErr.message);
+    } catch (e) {
+      console.error('Failed to answer callback query:', e?.message || e);
     }
   }
 }
-
-export { onCallback };

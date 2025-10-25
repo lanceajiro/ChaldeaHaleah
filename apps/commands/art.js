@@ -14,71 +14,70 @@ export const meta = {
 };
 
 const IIIF_BASE = 'https://www.artic.edu/iiif/2';
+const BASE = 'https://api.artic.edu/api/v1/artworks';
 
-async function fetchRandomArtwork(attempt = 0) {
-  // Try to get total pages first (small request)
-  const limit = 1;
-  const baseUrl = `https://api.artic.edu/api/v1/artworks`;
-  const infoRes = await axios.get(`${baseUrl}?limit=1`);
-  const totalPages = (infoRes.data && infoRes.data.pagination && infoRes.data.pagination.total_pages) || 1000;
-  // choose a random page between 1 and totalPages (clamp to reasonable upper bound)
-  const rndPage = Math.max(1, Math.floor(Math.random() * Math.min(totalPages, 5000)) + 1);
+const keyboard = (msgId) => ({ inline_keyboard: [[{ text: '🔁', callback_data: JSON.stringify({ command: 'art', messageId: msgId, args: ['refresh'] }) }]] });
 
-  const res = await axios.get(`${baseUrl}?page=${rndPage}&limit=${limit}&fields=id,title,artist_display,date_display,image_id`);
-  const art = res.data && res.data.data && res.data.data[0] ? res.data.data[0] : null;
-
-  // If there's no image_id, retry a few times
-  if (!art || !art.image_id) {
-    if (attempt < 4) {
-      return fetchRandomArtwork(attempt + 1);
-    }
-    // final fallback: return null so caller can handle
-    return null;
+async function fetchRandomArtwork() {
+  const info = await axios.get(`${BASE}?limit=1`).then(r => r.data).catch(() => null);
+  const total = info?.pagination?.total_pages ?? 1000;
+  const max = Math.min(total, 5000);
+  for (let i = 0; i < 5; i++) {
+    const page = Math.floor(Math.random() * max) + 1;
+    const res = await axios.get(`${BASE}?page=${page}&limit=1&fields=id,title,artist_display,date_display,image_id`).then(r => r.data).catch(() => null);
+    const art = res?.data?.[0];
+    if (art?.image_id) return {
+      title: art.title || 'Untitled',
+      artist: art.artist_display || 'Unknown',
+      date: art.date_display || 'Unknown date',
+      imageUrl: `${IIIF_BASE}/${art.image_id}/full/843,/0/default.jpg`
+    };
   }
-
-  const imageUrl = `${IIIF_BASE}/${art.image_id}/full/843,/0/default.jpg`;
-
-  return {
-    title: art.title || 'Untitled',
-    artist: art.artist_display || 'Unknown',
-    date: art.date_display || 'Unknown date',
-    imageUrl
-  };
+  return null;
 }
 
 export async function onStart({ bot, msg, args, response, usages }) {
-  const loadingMsg = await response.reply('🖼️ Finding a random artwork for you...', { parse_mode: 'Markdown' });
+  const loading = await response.reply('🖼️ Finding a random artwork for you...', { parse_mode: 'Markdown' });
+  const safeDel = async (m) => { try { await response.delete(m); } catch (e) {} };
 
   try {
     const art = await fetchRandomArtwork();
-
     if (!art) {
-      // Couldn't find a suitable artwork after retries
-      try { await response.delete(loadingMsg); } catch (e) {}
-      await response.reply('❌ Sorry — couldn\'t find a random artwork right now. Try again in a bit.');
-      return;
+      await safeDel(loading);
+      return response.reply("❌ Sorry — couldn't find a random artwork right now. Try again in a bit.");
     }
 
-    const caption = `
-🖼️ *${art.title}*
-👤 ${art.artist}
-📅 ${art.date}
-`;
+    const caption = `🖼️ *${art.title}*\n👤 ${art.artist}\n📅 ${art.date}`;
+    const sent = await response.photo(art.imageUrl, { caption, parse_mode: 'Markdown', reply_markup: keyboard(null) });
 
-    // delete loading message before final send
-    try { await response.delete(loadingMsg); } catch (e) {}
-
-    // send artwork image with caption
-    await response.photo(art.imageUrl, { caption, parse_mode: 'Markdown' });
-
+    try { await response.editMarkup(sent, keyboard(sent.message_id)); } catch (e) { console.error('Failed to update keyboard:', e?.message || e); }
+    try { await safeDel(loading); } catch (e) {}
   } catch (error) {
-    // best-effort cleanup and friendly error
-    try { await response.delete(loadingMsg); } catch (e) {}
-
-    const errText = error?.response?.status
-      ? `⚠️ API error: received status ${error.response.status}`
-      : `⚠️ An error occurred: ${error.message}`;
-
+    await safeDel(loading);
+    const errText = error?.response?.status ? `⚠️ API error: received status ${error.response.status}` : `⚠️ An error occurred: ${error?.message || 'Unknown error'}`;
     await response.reply(errText);
+  }
+}
+
+export async function onCallback({ bot, callbackQuery, payload, response }) {
+  try {
+    if (payload?.command !== 'art') return;
+    const msg = callbackQuery.message;
+    if (!payload.messageId || msg.message_id !== payload.messageId) return;
+
+    const art = await fetchRandomArtwork();
+    if (!art) return void (await bot.answerCallbackQuery(callbackQuery.id, { text: 'Error fetching artwork.' }));
+
+    const caption = `🖼️ *${art.title}*\n👤 ${art.artist}\n📅 ${art.date}`;
+    await response.editMedia(
+      { chatId: msg.chat.id, messageId: payload.messageId },
+      { type: 'photo', media: art.imageUrl, caption, parse_mode: 'Markdown' },
+      { reply_markup: keyboard(payload.messageId) }
+    );
+
+    await bot.answerCallbackQuery(callbackQuery.id);
+  } catch (err) {
+    console.error('Error in art callback:', err?.message || err);
+    try { await bot.answerCallbackQuery(callbackQuery.id, { text: 'An error occurred. Please try again.' }); } catch (_) {}
   }
 }

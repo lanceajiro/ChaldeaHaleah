@@ -42,8 +42,8 @@ export const meta = {
     "loadall                 - Loads all commands and events"
   ],
   cooldown: 5,
-  type: "admin",
-  category: "admin"
+  type: "owner",
+  category: "owner"
 };
 
 export async function onStart({ response, chatId, msg, args, usages }) {

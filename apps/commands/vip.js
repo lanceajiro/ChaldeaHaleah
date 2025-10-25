@@ -7,7 +7,7 @@ export const meta = {
   description: 'Manage VIP users (list/add/remove)',
   author: 'AjiroDesu',
   prefix: 'both',
-  category: 'admin',
+  category: 'utility',
   type: 'anyone',
   cooldown: 2,
   guide: ['- show this guide', 'list - list VIPs', 'add <uid> - add VIP (or reply)', 'remove <uid> - remove VIP (or reply)']
@@ -45,11 +45,11 @@ const saveVip = (vipObj) => {
   }
 };
 
-const loadAdmins = () => {
+const loadOwners = () => {
   try {
     if (!fs.existsSync(SETTINGS_PATH)) return null;
     const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH));
-    return Array.isArray(settings.admin) ? settings.admin.map(String) : [];
+    return Array.isArray(settings.owner) ? settings.owner.map(String) : [];
   } catch {
     return null;
   }
@@ -57,7 +57,7 @@ const loadAdmins = () => {
 
 const normalizeId = (id) => id ? String(id).match(/-?\d+/)?.[0] ?? null : null;
 
-const isAdmin = (adminArray, userId) => Array.isArray(adminArray) && adminArray.map(String).includes(normalizeId(userId));
+const isOwner = (ownerArray, userId) => Array.isArray(ownerArray) && ownerArray.map(String).includes(normalizeId(userId));
 
 const buildName = (user) => {
   if (!user) return null;
@@ -91,15 +91,15 @@ const buildVipList = async (bot, vipObj) => {
 
 export async function onStart({ bot, msg, args, response, usages }) {
   const vipData = loadVip();
-  const admins = loadAdmins();
+  const owners = loadOwners();
   if (!args.length) return response.reply(typeof usages === 'function' ? await usages() : meta.guide.join('\n'), { parse_mode: 'Markdown' });
 
   const sub = args[0].toLowerCase();
   if (sub === 'list') return response.reply(await buildVipList(bot, vipData), { parse_mode: 'Markdown' });
 
   if (sub === 'add' || sub === 'remove') {
-    if (!Array.isArray(admins)) return response.reply(`⚠️ Cannot verify admin: settings file missing/invalid at \`${SETTINGS_PATH}\`.`, { parse_mode: 'Markdown' });
-    if (!isAdmin(admins, msg.from?.id ?? msg.from?.user_id)) return response.reply('⚠️ Only admins can use this command.', { parse_mode: 'Markdown' });
+    if (!Array.isArray(owners)) return response.reply(`⚠️ Cannot verify owner: settings file missing/invalid at \`${SETTINGS_PATH}\`.`, { parse_mode: 'Markdown' });
+    if (!isOwner(owners, msg.from?.id ?? msg.from?.user_id)) return response.reply('⚠️ Only owners can use this command.', { parse_mode: 'Markdown' });
 
     const targetId = normalizeId(msg.reply_to_message?.from?.id ?? args[1]);
     if (!targetId) return response.reply(`⚠️ Missing target. Use \`${sub} <uid>\` or reply to a message.`, { parse_mode: 'Markdown' });

@@ -5,8 +5,7 @@ export const meta = {
   author: "ShawnDesu"
 };
 
-export async function onStart({ bot, msg }) {
-  const chatId = msg.chat.id;
+export async function onStart({ bot, msg, chatId, response }) {
   const leftMember = msg.left_chat_member;
 
   try {
@@ -32,17 +31,10 @@ export async function onStart({ bot, msg }) {
       ? `${fullName} has left the group. We'll miss you!`
       : `Goodbye, ${fullName}. You were removed by an admin.`;
 
-    await bot.sendMessage(chatId, goodbyeMessage);
+    await response.send(goodbyeMessage);
 
   } catch (error) {
     console.log('Error in goodbye handler:', error);
-    const owners = Array.isArray(global.settings?.owner)
-      ? global.settings.owner
-      : Array.isArray(global.settings?.admin)
-        ? global.settings.admin
-        : [];
-    for (const ownerId of owners) {
-      try { await bot.sendMessage(ownerId, `Error in goodbye handler:\n${error.message}`); } catch {}
-    }
+    await response.forOwner(`Error in goodbye handler:\n${error.message}`);
   }
 }
