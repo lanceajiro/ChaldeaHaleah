@@ -9,7 +9,7 @@
 * **Custom Commands**: Easily create and manage modular commands.
 * **Admin Tools**: Efficiently manage members and groups.
 * **Event Handling**: Send welcome and goodbye messages for group members.
-* **Role-Based Access**: Restrict command usage by role (`admin`, `vip`, `administrator`, `anyone`) and chat type (`group` or `private`).
+* **Role-Based Access**: Restrict command usage by role (`owner`, `vip`, `administrator`, `anyone`) and chat type (`group` or `private`).
 * **Media Support**: Send and manage text, images, videos, and audio.
 * **Interactive Elements**: Supports inline buttons, callbacks, and message editing.
 * **Keyword Triggers**: Automatically respond to specific keywords or phrases.
